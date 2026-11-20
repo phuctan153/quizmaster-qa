@@ -69,3 +69,15 @@
 - QM-003 commit: `bd4ec66`. Git: schema-design commit prepared after diff review.
 - Next: API contract and risk-based scenario catalogue; investigate Docker startup
   and dependency resolution before claiming backend readiness.
+
+### 2026-11-20 — QM-005 — DONE
+- Defined 35 v1 routes, request/response schemas, role/owner boundaries, error
+  codes, pagination, CSV format and auth/JWT policy. Deliberately omitted speculative
+  routes rather than filling the original endpoint estimate.
+- Verification: Python route uniqueness/count PASS (35); explicit FR coverage PASS
+  after expanding shorthand FR references detected by the first assertion run.
+  Static contract review and `git diff --check` PASS. API tests NOT_RUN (no server).
+- Attempted background Docker Desktop startup using installed executable, then
+  checked `docker version`: engine pipe still absent. No database test pass claimed.
+- QM-004 commit: `12fea5a`. Next: scenario catalogue and documentation integrity
+  check, then first auth slice. Resume: `git status --short`, `docker version`.
