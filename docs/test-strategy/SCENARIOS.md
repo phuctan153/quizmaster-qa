@@ -1,8 +1,8 @@
 # Initial Risk-Based Scenario Catalogue
 
-Every scenario is **NOT_RUN**. These are independent expected results derived
-from SRS, not generated evidence. Evidence will identify an executable test name,
-command, environment and result after implementation. Risk P0 precedes P1.
+TC-001..007 are **PASS** for the first auth/account slice on 2026-11-20; see
+execution mapping below. TC-008..036 are **NOT_RUN**. These are independent
+expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
 |---|---|---|---|---|---|
@@ -42,6 +42,30 @@ command, environment and result after implementation. Risk P0 precedes P1.
 | TC-034 | P1 | FR-014 | RULE-LOG-002/004 | Read foreign notification/audit as student → denied; audit metadata contains no secrets | API/DB |
 | TC-035 | P1 | FR-001 | RULE-AUTH-001 | UI login, denied route and logout-local token clearing → expected access boundaries | UI |
 | TC-036 | P0 | FR-013 | RULE-SCORE-002 | Instructor publishes/assigns, student answers/submits/views history → consistent UI/API/DB result | E2E |
+
+## Executed evidence — 2026-11-20
+
+`mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT
+-Djavax.net.ssl.trustStore=NONE -B verify` → PASS: 3 unit + 24 HTTP/PostgreSQL
+integration invocations, zero failures/errors/skips. Java 21.0.4, Spring Boot
+3.5.15, Flyway 11.20.3, PostgreSQL 18.7, Docker 29.5.3. Failsafe uses a real random
+HTTP port and disposable PostgreSQL; no mocked repository or H2 database.
+
+| Scenario | Executable evidence in IdentityIT (unless noted) |
+|---|---|
+| TC-001 | validLoginNormalizesEmailAndReturnsSafeIdentity |
+| TC-002 | loginFailuresAreIndistinguishable |
+| TC-003 | missingAndMalformedBearerAreUnauthorized; invalidClaimsOrSignatureAreRejected (7 cases); JwtValidationTest.expiryIsRejectedAtExactDeadlineWithoutClockSkew |
+| TC-004 | bothNonAdminRolesAreDeniedBeforeBodyValidation; forgedRoleClaimDoesNotGrantAdminAccess |
+| TC-005 | adminCreatesHashedAccountAndRejectsDuplicateEmail; concurrentDuplicateCreationCommitsExactlyOneAccount |
+| TC-006 | deactivationRejectsAlreadyIssuedToken |
+| TC-007 | malformedLoginIsRejectedWithoutEchoingSecrets (5 cases); adminInputAndPaginationAreValidated; numericRolesAndStringBooleansAreRejected; passwordMaximumSupportsUnicodeWithoutTruncation |
+
+Additional executed assertions: direct DB checks on email normalization/role;
+short/malformed signing keys fail closed; credential DTOs redact `toString`.
+Reports: `backend/target/surefire-reports/TEST-*.xml` and
+`backend/target/failsafe-reports/TEST-*.xml` (generated and ignored). Curated durable
+summary: WORKLOG QM-007 entry. Scenario counts and test invocation counts differ.
 
 ## Execution strategy
 

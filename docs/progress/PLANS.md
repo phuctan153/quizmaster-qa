@@ -26,4 +26,6 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
   normalized uniqueness, deactivation and API permissions; docs checker and Git diff.
 - Risks: Docker engine absent; distinguish unit/mock checks from PostgreSQL evidence.
   No H2 substitution. No production data or external deployment involved.
-- Status: IN_PROGRESS; design baseline committed, executable work next.
+- Status: COMPLETE on 2026-11-20. Executable auth/account slice, migration and
+  3 unit + 24 HTTP/PostgreSQL integration tests PASS; documentation/config checks
+  PASS. Standalone manual bootstrap remains NOT_RUN and is documented explicitly.

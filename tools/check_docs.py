@@ -17,7 +17,7 @@ def check():
     scenarios = read("docs/test-strategy/SCENARIOS.md")
     contract = read("docs/design/API_CONTRACT.md")
     frs = re.findall(r"^\| (FR-\d+) \|", requirements, re.M)
-    tcs = re.findall(r"^\| (TC-\d+) \|", scenarios, re.M)
+    tcs = re.findall(r"^\| (TC-\d+) \| P[0-2] \|", scenarios, re.M)
     rules = set(re.findall(r"^\| (RULE-[A-Z]+-\d+) \|", read("docs/requirements/BUSINESS_RULES.md"), re.M))
     routes = re.findall(r"^\| (GET|POST|PUT|PATCH|DELETE) \| ([^|]+) \|", contract, re.M)
     for label, values in (("requirements", frs), ("scenarios", tcs), ("routes", routes)):

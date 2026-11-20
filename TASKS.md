@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-007 (IN_PROGRESS)** — auth/account backend foundation
-- Last verified task: **QM-006**
+- Current task: **QM-008 (READY)** — minimal auth UI and integration journey
+- Last verified task: **QM-007**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Not started / not verified**
+- Implementation status: **Auth/account slice implemented and verified; other modules, UI and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -22,10 +22,23 @@
 | QM-004 | Design schema, seed/reset and time testability | P0 | DONE | QM-002, QM-003 | ARCHITECTURE_AND_DATA: logical ERD, constraints, disposable seed/reset and clock/expiry plan reviewed; runtime DB checks NOT_RUN |
 | QM-005 | Define API contracts and error model | P0 | DONE | QM-002, QM-003 | API_CONTRACT: 35 unique routes, DTOs, statuses, errors, ownership and auth contract; static checks PASS |
 | QM-006 | QA test strategy and initial scenario catalogue | P0 | DONE | QM-002, QM-005 | 36 NOT_RUN scenarios map all 14 FRs; tools/check_docs.py PASS; no execution coverage claimed |
-| QM-007 | Backend foundation and auth vertical slice | P1 | IN_PROGRESS | QM-003, QM-004, QM-005 | Executable app, auth/RBAC integration tests, checks actually run; Docker engine prerequisite unresolved |
-| QM-008 | Frontend foundation and first user journey | P1 | BACKLOG | QM-007 | Minimal functional UI, validated integration journey |
+| QM-007 | Backend foundation and auth vertical slice | P1 | DONE | QM-003, QM-004, QM-005 | Executable Spring Boot app, migration, 3 unit + 24 real HTTP/PostgreSQL tests PASS; see worklog and LOCAL_SETUP |
+| QM-008 | Frontend foundation and first user journey | P1 | READY | QM-007 | Minimal React login/identity and Admin create/status UI; validated integration journey; no key/password leakage; API regression stays green |
 | QM-009+ | Implement modules in vertical slices with QA tests | P1 | BACKLOG | QM-006, QM-007 | Per-slice API, DB, business-rule, security tests; evidence and commits |
 | QM-010+ | CI, automation hardening and portfolio delivery | P1 | BACKLOG | Working slices | Stable checks, reproducible setup, honest reporting and README |
+
+### QM-008 — Next executable slice
+- Priority: P1; dependencies: QM-007.
+- Goal: expose the verified auth/account journey through a small React UI.
+- Acceptance: login + identity for all roles; Admin account creation/status/list;
+  denied-role routes; token clearing on logout/401; API proxy keeps bearer calls
+  same-origin; no credential persistence or logging. UI has no exam placeholders
+  presented as working features.
+- Validation: build, component/access tests and real browser-to-backend journey;
+  keep `mvn -f backend/pom.xml verify` and docs checks passing.
+- Evidence: NOT_RUN (no frontend implementation yet).
+- Next: inspect current source, pin React/build tooling, define UI journey tests,
+  implement and validate against disposable local backend data.
 
 ## Codex task creation rules
 

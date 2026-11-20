@@ -93,8 +93,9 @@ commit; there is no claim of zero worker scheduling latency at deadline.
 - Fixed/mutable test Clock advances across before/equal/after deadline without
   wall-clock sleeps. Concurrency tests use barriers, independent connections and
   bounded timeouts; verify rows and API responses after transactions complete.
-- Capture versions, command, counts and outcome in worklog. Docker engine is
-  currently unavailable; DB integration tests are NOT_RUN until it is reachable.
+- Capture versions, command, counts and outcome in worklog. Docker engine became
+  reachable on 2026-11-20; the auth slice's migration/DB integration ran in QM-007.
+  Remaining schema/attempt/worker integration tests are NOT_RUN.
 
 ## Technical references checked 2026-11-20
 

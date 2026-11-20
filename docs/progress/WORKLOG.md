@@ -91,3 +91,42 @@
 - QM-005 commit: `e221422`. No application/CI evidence exists yet.
 - Next: execute PLAN-001 (QM-007), resolve dependency/runtime prerequisites and
   test auth slice. Resume: `python tools/check_docs.py`; `docker version`.
+
+### 2026-11-20 — QM-007 — DONE — first executable backend milestone
+- Implemented five auth/account routes with Spring Boot 3.5.15 / Java 21, JDBC,
+  Flyway migration, normalized unique email, salted PBKDF2 hashes, validated DTOs,
+  strict JSON properties/types, paginated admin list and structured errors.
+- HS256 JWT requires an environment-supplied >=32-byte base64 secret, issuer,
+  audience and 15-minute expiry. Roles/active state come from the database on every
+  request. Added opt-in empty-table admin bootstrap and loopback-only Compose DB.
+- Environment recovery: sandbox could not reach Docker; background startup outside
+  sandbox made engine available (29.5.3). Initial offline Maven build failed due
+  to uncached Failsafe. Online build initially failed PKIX trust validation; using
+  the Windows ROOT store fixed HTTPS without disabling TLS checks.
+- First actual integration run: 22 tests PASS, no skips. Found Flyway 11.7.2 warning
+  that PostgreSQL 18 was newer than supported. Checked primary adapter source,
+  pinned Flyway 11.20.3; subsequent run has no database-version warning.
+- Final command from backend: `mvn -Djavax.net.ssl.trustStoreType=Windows-ROOT
+  -Djavax.net.ssl.trustStore=NONE -B verify` → BUILD SUCCESS at 16:29 Bangkok;
+  3 unit + 24 HTTP/PostgreSQL tests, 0 failures/errors/skips. PostgreSQL 18.7 in a
+  disposable Testcontainers DB, actual Tomcat random port, real migrations/repository.
+  Coverage includes JWT claims/signature/exact expiry, role/forged-role denial,
+  normalized-email concurrency (one 201 + one 409), deactivation and Unicode bounds.
+- Reports are ignored generated XML under backend/target/{surefire,failsafe}-reports;
+  durable scenario/test mapping is in SCENARIOS. `jar tf` confirmed both bundled
+  Flyway libraries are 11.20.3. No H2 or mocked persistence was used.
+- Other checks: `docker compose config --quiet` with a generated process-only
+  password PASS; `python tools/check_docs.py` PASS; Git diff whitespace check PASS.
+- Limits: standalone bootstrap and development Compose startup NOT_RUN; only config
+  and integration-driven HTTP startup verified. Exam/worker/audit/notification
+  modules, React UI, Selenium/REST Assured portfolio framework and CI NOT_RUN.
+  Development-only HTTP uses loopback; no production readiness claim.
+- QM-006 commit: `6f66e04`. Reviewed source/config for credentials, response leaks,
+  auth ordering, DB constraints and test resource scope. Backend milestone commit
+  prepared; get its exact hash via `git log -1 --oneline`.
+- Handoff: QM-008 READY; implement the minimal React auth/Admin journey, run browser
+  integration, then create concrete module tasks from roadmap. DEC-09 still PENDING
+  as documented; no product decision blocks the auth UI.
+- Resume: `git status --short`; `python tools/check_docs.py`; read TASKS/QM-008 and
+  LOCAL_SETUP. Reproduce backend: `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE verify`.

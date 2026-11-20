@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: quizmaster-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/quizmaster}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jackson:
+    mapper:
+      allow-coercion-of-scalars: false
+    deserialization:
+      fail-on-unknown-properties: true
+      fail-on-numbers-for-enums: true
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  error:
+    include-message: never
+    include-stacktrace: never
+quizmaster:
+  jwt-secret: ${JWT_SECRET_BASE64}
