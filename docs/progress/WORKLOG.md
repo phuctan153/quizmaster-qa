@@ -178,3 +178,28 @@
   role/parent/duplicate/concurrency validation; then allocate question-bank slice.
 - Resume: `git status --short`; `python tools/check_docs.py`; `npm --prefix frontend
   test`; backend verify command above. Read TASKS/QM-009 and API_CONTRACT.
+
+### 2026-11-20 — Pre-push verification and initial GitHub push — PASS
+- User explicitly authorized pushing the current code after successful checks.
+  Scope was verification and publication of the existing milestone, not QM-009.
+- Clean initial worktree at `6188911`. Fetched origin and confirmed no remote refs;
+  retained the existing master branch without rewriting history or force-pushing.
+- Actual frontend commands from frontend directory: `npm test` → 12/12 PASS;
+  `npm run build` → PASS; `npm audit --audit-level=moderate` with process-only
+  NODE_USE_SYSTEM_CA=1 → zero vulnerabilities.
+- Actual backend command from backend directory: `mvn
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify` → BUILD SUCCESS at 16:59:53 Bangkok; 3 unit + 24 real HTTP/PostgreSQL
+  integration invocations, zero failures/errors/skips.
+- `python tools/check_docs.py` and `git diff --check` PASS. Tracked-path inspection
+  found no .env, credential/key files, target, node_modules, dist or generated
+  screenshot artifacts. Browser scenarios were verified in QM-008; no additional
+  manual browser run or CI execution was claimed during this verification.
+- `git push -u origin master` succeeded. Remote master SHA from `git ls-remote
+  origin refs/heads/master` exactly matched local HEAD:
+  `6188911fe2f83f2070ddb05f41975bfe1f28fe9d`. Tracking is origin/master; worktree clean
+  after the code push. This journal update is committed and synchronized separately.
+- Remaining: examination modules and CI are unimplemented; DEC-09 remains PENDING.
+  Next implementation task stays QM-009 READY (taxonomy API). No deployment made.
+- Resume: `git status --short --branch`; read TASKS/QM-009; reproduce checks using
+  the commands above. GitHub source: https://github.com/phuctan153/quizmaster-qa.
