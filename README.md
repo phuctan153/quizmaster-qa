@@ -2,7 +2,7 @@
 
 **Online Examination Management System — QA Automation Portfolio**
 
-> **Current status:** QM-001..005 verified on 2026-11-20: requirements, access/state/data design and a 35-route API contract. QA scenarios are next. Application code, automated tests and CI are not implemented or executed.
+> **Current status:** QM-001..006 verified on 2026-11-20: design baseline and 36 planned QA scenarios. QM-007 auth backend is in progress. Application tests and CI have not run.
 
 ## Purpose
 
@@ -42,6 +42,7 @@ Codex acts as the day-to-day development and QA agent; the human acts as Product
 - `docs/requirements/BUSINESS_RULES.md` — approved vs proposed rules.
 - `docs/requirements/DECISION_LOG.md` — approval state of product decisions.
 - `docs/test-strategy/TEST_STRATEGY.md` — test priorities and approach.
+- `docs/test-strategy/SCENARIOS.md` — risk-based scenarios (all NOT_RUN until executed).
 - `docs/progress/WORKLOG.md` — actual work, checks and continuation.
 
 ## Progress
@@ -51,3 +52,5 @@ See `TASKS.md` for verified task status. No test pass counts, screenshots, relea
 ## Run locally
 
 Not yet available. Codex must add verified setup, build and test commands when implemented.
+
+Documentation integrity: `python tools/check_docs.py` (Python 3, standard library only).

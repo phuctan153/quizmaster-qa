@@ -15,4 +15,15 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 
 ## Active plans
 
-None yet. QM-001 is documentation/bootstrap and tracked in `TASKS.md`.
+### PLAN-001 — First auth/account slice
+- Goal: run the monolith and verify FR-001/002 with real persistence and denied-role cases.
+- Scope: login, own identity, admin create/list/activate accounts; no public signup or UI yet.
+- Dependencies: QM-003/004/005 DONE; JWT and account policies in API_CONTRACT.
+- Steps: pin/resolve Maven dependencies; migration/account repository; JWT/security;
+  controllers/validation/errors; unit/security tests; real PostgreSQL integration;
+  setup/evidence and review/commit. Optional development admin bootstrap is opt-in.
+- Verification: Java 21 Maven test/verify; PostgreSQL Testcontainers for migration,
+  normalized uniqueness, deactivation and API permissions; docs checker and Git diff.
+- Risks: Docker engine absent; distinguish unit/mock checks from PostgreSQL evidence.
+  No H2 substitution. No production data or external deployment involved.
+- Status: IN_PROGRESS; design baseline committed, executable work next.

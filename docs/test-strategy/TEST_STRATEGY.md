@@ -2,6 +2,10 @@
 
 > Not an executed test plan. Codex owns ongoing updates after features and contracts are agreed.
 
+Initial traceability: `SCENARIOS.md` contains 36 scenarios, all NOT_RUN. Run
+`python tools/check_docs.py` from repository root to check requirement/route/scenario
+references, language and import layout. This check is not application test evidence.
+
 ## Priorities
 
 1. API automation (~35% emphasis): contract, status/error handling, RBAC, negative and boundary tests, REST Assured + TestNG.

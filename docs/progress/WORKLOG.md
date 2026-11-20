@@ -81,3 +81,13 @@
   checked `docker version`: engine pipe still absent. No database test pass claimed.
 - QM-004 commit: `12fea5a`. Next: scenario catalogue and documentation integrity
   check, then first auth slice. Resume: `git status --short`, `docker version`.
+
+### 2026-11-20 — QM-006 — DONE
+- Added 36 risk-based scenarios with FR/rule traceability, expected negative/race
+  outcomes and execution layers. Every scenario is NOT_RUN, including UI and DB.
+- Added standard-library documentation integrity check. Actual command:
+  `python tools/check_docs.py` → PASS (14 FRs, 35 routes, 36 scenarios, references,
+  language/whitespace and import layout). `git diff --check` → PASS.
+- QM-005 commit: `e221422`. No application/CI evidence exists yet.
+- Next: execute PLAN-001 (QM-007), resolve dependency/runtime prerequisites and
+  test auth slice. Resume: `python tools/check_docs.py`; `docker version`.
