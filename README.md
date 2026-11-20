@@ -2,7 +2,7 @@
 
 **Online Examination Management System — QA Automation Portfolio**
 
-> **Current status:** QM-001/002 verified on 2026-11-20: imported baseline and 14 functional acceptance criteria. Authorization and lifecycle design is next. Application code, automated tests and CI are not implemented or executed.
+> **Current status:** QM-001..003 verified on 2026-11-20: baseline, acceptance criteria and access/state model. Schema and API design are next. Application code, automated tests and CI are not implemented or executed.
 
 ## Purpose
 
@@ -36,6 +36,7 @@ Codex acts as the day-to-day development and QA agent; the human acts as Product
 - `docs/requirements/PROJECT_SCOPE.md` — scope, modules, in/out.
 - `docs/requirements/BUSINESS_REQUIREMENTS.md` — business goals and traceability.
 - `docs/requirements/SRS.md` — functional acceptance criteria and explicit engineering assumptions.
+- `docs/requirements/ACCESS_AND_STATES.md` — role/owner matrix, lifecycles and concurrency invariants.
 - `docs/requirements/BUSINESS_RULES.md` — approved vs proposed rules.
 - `docs/requirements/DECISION_LOG.md` — approval state of product decisions.
 - `docs/test-strategy/TEST_STRATEGY.md` — test priorities and approach.

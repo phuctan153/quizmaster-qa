@@ -43,3 +43,18 @@
 - Git: coherent requirements commit prepared; actual hash available in Git history.
 - Next: QM-003 RBAC/state/concurrency, then QM-004/005 schema/API. Resume:
   `git status --short`; read SRS and the current task board.
+
+### 2026-11-20 — QM-003 — DONE
+- Added role/ownership matrix, account/exam/attempt transitions, prohibited paths,
+  repeated-start/submit behavior and lock ordering. Reviewed against FR-001..014
+  and DEC-01..08/10; no widening of role privileges or answer-key disclosure.
+- Defined stale-save conflict handling and commit-before-error behavior for expiry
+  so returning a late-save error cannot accidentally roll back finalization.
+- Verification: design review PASS; `git diff --check` PASS. Runtime race, DB and
+  permission tests NOT_RUN (design-only). QM-002 commit: `7d512b4`.
+- Tool survey: Java 21.0.4, Maven 3.9.9, Node 22.20.0, Python 3.13.8 available.
+  Docker client 29.5.3 exists but Docker Desktop Linux engine pipe is absent;
+  database/container integration is currently BLOCKED until engine is running.
+  Maven version printed an additional Access denied line; investigate during build.
+- Next: schema/seed/clock design, API inventory, scenario traceability. Resume with
+  `git status --short`; inspect Docker engine with `docker version` before DB tests.
