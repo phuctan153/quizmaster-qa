@@ -1,8 +1,8 @@
 # Project Scope — V1.0 Baseline
 
-**Project:** QuizMaster QA  
-**System under test:** Online Examination Management System  
-**Primary objective:** A strong QA / API automation portfolio with a deliberately moderate AUT development burden.  
+**Project:** QuizMaster QA
+**System under test:** Online Examination Management System
+**Primary objective:** A strong QA / API automation portfolio with a deliberately moderate AUT development burden.
 **Status:** Scope baseline established; detailed contract, schemas and implementation not approved/completed.
 
 ## Stakeholders and roles

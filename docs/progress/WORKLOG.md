@@ -29,3 +29,17 @@
 - Validation: hash/read checks PASS; application/API/DB/UI tests NOT_RUN (no source yet). Repository documentation is now the canonical source.
 - Git: initialization commit prepared after diff review; see `git log --oneline` for its actual hash.
 - Next: QM-002 acceptance criteria, QM-003 authorization/state model, then schema/API specifications. Resume with `git status --short` and read `TASKS.md`.
+
+### 2026-11-20 — QM-002 — DONE
+- Added SRS covering all ten BRs, 14 functional requirements, negative boundaries,
+  score examples, account access, CSV atomicity, privacy and explicit reversible
+  defaults. No product proposal was silently promoted to APPROVED.
+- Verification: Python assertion PASS for 14 unique FR IDs and coverage of BR-01..10;
+  import artifacts absent PASS; `git diff --check` PASS after removing three inherited
+  trailing-space lines. The initial commit's whitespace check did report these
+  lines; this entry records their correction rather than claiming it was clean.
+- Added `.gitattributes` to keep source/document line endings predictable.
+- Application tests NOT_RUN: no implementation. Initial baseline commit: `690a8b8`.
+- Git: coherent requirements commit prepared; actual hash available in Git history.
+- Next: QM-003 RBAC/state/concurrency, then QM-004/005 schema/API. Resume:
+  `git status --short`; read SRS and the current task board.
