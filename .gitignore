@@ -1,0 +1,44 @@
+# IDE and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Sensitive config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Java / Maven
+**/target/
+*.class
+*.log
+
+# Node
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+
+# Python/temp
+__pycache__/
+*.pyc
+*.tmp
+*.bak
+
+# Test execution output (source test artifacts stay tracked)
+**/allure-results/
+**/allure-report/
+**/test-output/
+**/surefire-reports/
+**/screenshots/tmp/
+**/reports/generated/
+
+# Database volumes
+**/.postgres-data/
