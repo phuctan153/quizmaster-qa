@@ -1,7 +1,7 @@
 # Initial Risk-Based Scenario Catalogue
 
-TC-001..007 are **PASS** for the first auth/account slice on 2026-11-20; see
-execution mapping below. TC-008..036 are **NOT_RUN**. These are independent
+TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
+TC-008..034 and TC-036 are **NOT_RUN**. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -66,6 +66,12 @@ short/malformed signing keys fail closed; credential DTOs redact `toString`.
 Reports: `backend/target/surefire-reports/TEST-*.xml` and
 `backend/target/failsafe-reports/TEST-*.xml` (generated and ignored). Curated durable
 summary: WORKLOG QM-007 entry. Scenario counts and test invocation counts differ.
+
+TC-035 PASS (QM-008): actual browser login, Student denied Admin deep link,
+Admin create/status, inactive login denial and 401 logout against live backend/DB;
+12 Vitest component/client tests and successful Vite build. See UI_JOURNEY and
+WORKLOG QM-008 for commands, versions, fixes and screenshot locations. This is
+manual browser execution; no Selenium automation or CI pass is claimed.
 
 ## Execution strategy
 

@@ -142,3 +142,39 @@
 - Verification: `git remote -v`, `git ls-remote origin`, `git fetch origin` PASS.
 - Next: QM-008 React login/identity/Admin UI, component checks and live browser/API
   validation; retain backend regression. Last backend commit: `d7127de`.
+
+### 2026-11-20 — QM-008 — DONE — auth/account UI milestone
+- GitHub origin connection committed as `2213f2a`; remote empty when fetched.
+  This task continues locally under the existing no-push/no-deploy boundary.
+- Specified UI_JOURNEY before implementation. Added React 19.2.7/Vite 8.3.8 UI,
+  same-origin dev API proxy, memory-only token, role-gated Admin directory with
+  pagination/create/status, safe error messages and session generation checks.
+- Package survey/install initially exposed jsdom 31's higher Node requirement and
+  an npm audit advisory for Vite 8.0.16. Pinned jsdom 26.1.0 for Node 22.20.0 and
+  Vite 8.3.8 (registry/audit recommended patched release). Process-only
+  NODE_USE_SYSTEM_CA=1 fixed certificate errors without weakening TLS validation.
+- Actual final frontend commands: `npm test` → 12 PASS (no failures); `npm run
+  build` → PASS; `npm audit --audit-level=moderate` → zero vulnerabilities.
+- Backend regression: `mvn -Djavax.net.ssl.trustStoreType=Windows-ROOT
+  -Djavax.net.ssl.trustStore=NONE -B verify` → PASS, 3 unit + 24 integration,
+  zero failures/errors/skips. Backend runtime behavior was not changed.
+- Built and ran the standalone jar with bootstrap on 8080 against a new isolated
+  PostgreSQL container; generated test credentials stayed in ignored target state.
+  Real in-app browser through Vite 5173 verified Admin login, Student create,
+  duplicate email 409, status persistence, inactive login rejection, active Student
+  profile, denied accounts deep link and logout after Admin revokes active access.
+- Browser uncovered/fixed mobile horizontal overflow (now 375px page/viewport under
+  mobile override) and profile catch overwriting 401 expiry notice. Added regression
+  test for the notice; browser verified the corrected explanation. TC-035 PASS;
+  no Selenium automation claim. Screenshots in ignored frontend/reports/generated.
+- Added reproducible start/stop-browser-fixture scripts. Initial cleanup hit a
+  Windows quoting error before any stop; corrected JSON label inspection and reran
+  successfully. Owned Java process/container stopped, temporary credentials removed,
+  preview stopped. No existing database/container was reset or deleted.
+- Review: no credentials/build output/node_modules in staging; token/password never
+  persisted to browser storage or URLs. Documentation integrity and whitespace
+  checks run before commit. No CI, deployment or Product Owner acceptance claimed.
+- Next: QM-009 READY, implement four taxonomy routes with PostgreSQL migration,
+  role/parent/duplicate/concurrency validation; then allocate question-bank slice.
+- Resume: `git status --short`; `python tools/check_docs.py`; `npm --prefix frontend
+  test`; backend verify command above. Read TASKS/QM-009 and API_CONTRACT.

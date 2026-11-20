@@ -5,7 +5,7 @@
 GitHub remote: [phuctan153/quizmaster-qa](https://github.com/phuctan153/quizmaster-qa).
 Connected as `origin`; remote synchronization does not imply a deployment.
 
-> **Current status:** QM-001..007 verified on 2026-11-20. First auth/account backend slice implemented: 3 unit + 24 HTTP/PostgreSQL integration tests PASS (no skips). Exam modules, frontend and CI remain unimplemented.
+> **Current status:** QM-001..008 verified on 2026-11-20. Auth/account API and React UI implemented. 27 backend tests and 12 frontend tests PASS; real browser journey PASS. Examination modules and CI remain unimplemented.
 
 ## Purpose
 
@@ -29,6 +29,7 @@ Build a deliberately manageable system under test to demonstrate deep QA compete
 | Modular monolith, Docker Compose | SQL/JDBC, Selenium WebDriver, GitHub Actions |
 
 Backend: Java 21, Spring Boot 3.5.15, Flyway 11.20.3 and PostgreSQL 18.
+Frontend: React 19.2.7, Vite 8.3.8, Vitest 5.1.1 (Node 22.20.0 verified).
 Application tests use JUnit 5 and Testcontainers; portfolio API/UI TestNG frameworks
 and reporting technology remain planned.
 
@@ -45,10 +46,11 @@ Codex acts as the day-to-day development and QA agent; the human acts as Product
 - `docs/design/ARCHITECTURE_AND_DATA.md` — architecture, ER model, constraints, seed/reset and time testability.
 - `docs/design/API_CONTRACT.md` — versioned routes, DTOs, errors and auth contract.
 - `docs/design/LOCAL_SETUP.md` — prerequisites, isolated tests, local database and opt-in admin bootstrap.
+- `docs/design/UI_JOURNEY.md` — first UI workflow, validation and observed browser results.
 - `docs/requirements/BUSINESS_RULES.md` — approved vs proposed rules.
 - `docs/requirements/DECISION_LOG.md` — approval state of product decisions.
 - `docs/test-strategy/TEST_STRATEGY.md` — test priorities and approach.
-- `docs/test-strategy/SCENARIOS.md` — 36 risk-based scenarios: TC-001..007 PASS, remaining 29 NOT_RUN.
+- `docs/test-strategy/SCENARIOS.md` — 36 risk-based scenarios: TC-001..007 and TC-035 PASS, remaining 28 NOT_RUN.
 - `docs/progress/WORKLOG.md` — actual work, checks and continuation.
 
 ## Progress
@@ -56,8 +58,10 @@ Codex acts as the day-to-day development and QA agent; the human acts as Product
 Implemented: POST `/api/v1/auth/login`, GET `/api/v1/auth/me`, admin POST/GET
 `/api/v1/users`, PATCH `/api/v1/users/{id}/status`. Current account state is checked
 on every token use. Passwords use salted PBKDF2. No default credentials are shipped.
+React UI supports sign-in, profile, admin account creation/list/status, role denial
+and logout/401 handling. Token stays in memory; reload requires sign-in again.
 Audit events and the other designed routes remain planned. See `TASKS.md` and the
-worklog for evidence. No CI, UI, release or Product Owner acceptance is claimed.
+worklog for evidence. No CI, release or Product Owner acceptance is claimed.
 
 ## Run locally
 
@@ -69,7 +73,18 @@ mvn -f backend/pom.xml verify
 
 See `docs/design/LOCAL_SETUP.md` for the Windows TLS trust-store option and local
 server/bootstrap setup. `mvn test` alone does not run PostgreSQL integration tests.
-Docker Compose configuration passed validation; manual development bootstrap has
-not yet been exercised. The HTTP application was started by integration tests.
+Docker Compose configuration passed validation. Standalone bootstrap was also
+exercised with a disposable browser fixture; persistent development Compose startup
+remains NOT_RUN. To run the UI against the backend on port 8080:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`. `/api` is proxied to the backend; no browser CORS bypass
+is needed. Run `npm test` and `npm run build` for frontend checks. Windows npm may
+need `$env:NODE_USE_SYSTEM_CA='1'` for this environment's certificate chain.
 
 Documentation integrity: `python tools/check_docs.py` (Python 3, standard library only).

@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-008 (READY)** — minimal auth UI and integration journey
-- Last verified task: **QM-007**
+- Current task: **QM-009 (READY)** — taxonomy API vertical slice
+- Last verified task: **QM-008**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account slice implemented and verified; other modules, UI and CI pending**
+- Implementation status: **Auth/account API and React UI verified; examination modules and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -23,11 +23,11 @@
 | QM-005 | Define API contracts and error model | P0 | DONE | QM-002, QM-003 | API_CONTRACT: 35 unique routes, DTOs, statuses, errors, ownership and auth contract; static checks PASS |
 | QM-006 | QA test strategy and initial scenario catalogue | P0 | DONE | QM-002, QM-005 | 36 NOT_RUN scenarios map all 14 FRs; tools/check_docs.py PASS; no execution coverage claimed |
 | QM-007 | Backend foundation and auth vertical slice | P1 | DONE | QM-003, QM-004, QM-005 | Executable Spring Boot app, migration, 3 unit + 24 real HTTP/PostgreSQL tests PASS; see worklog and LOCAL_SETUP |
-| QM-008 | Frontend foundation and first user journey | P1 | READY | QM-007 | Minimal React login/identity and Admin create/status UI; validated integration journey; no key/password leakage; API regression stays green |
-| QM-009+ | Implement modules in vertical slices with QA tests | P1 | BACKLOG | QM-006, QM-007 | Per-slice API, DB, business-rule, security tests; evidence and commits |
+| QM-008 | Frontend foundation and first user journey | P1 | DONE | QM-007 | React auth/Admin UI; 12 UI/client tests PASS; real browser/API/DB journey PASS; 27 backend regression tests PASS; build/audit PASS |
+| QM-009 | Categories and subjects API vertical slice | P1 | READY | QM-006, QM-007 | Four contracted taxonomy routes, migration/constraints, RBAC/validation/duplicate/parent tests against PostgreSQL; docs and regression evidence |
 | QM-010+ | CI, automation hardening and portfolio delivery | P1 | BACKLOG | Working slices | Stable checks, reproducible setup, honest reporting and README |
 
-### QM-008 — Next executable slice
+### QM-008 — Verified first UI slice
 - Priority: P1; dependencies: QM-007.
 - Goal: expose the verified auth/account journey through a small React UI.
 - Acceptance: login + identity for all roles; Admin account creation/status/list;
@@ -36,9 +36,19 @@
   presented as working features.
 - Validation: build, component/access tests and real browser-to-backend journey;
   keep `mvn -f backend/pom.xml verify` and docs checks passing.
-- Evidence: NOT_RUN (no frontend implementation yet).
-- Next: inspect current source, pin React/build tooling, define UI journey tests,
-  implement and validate against disposable local backend data.
+- Evidence: 12 Vitest tests, real browser checks, 27 backend regressions, Vite build
+  and npm audit PASS; see worklog and UI_JOURNEY for actual execution.
+- Next: QM-009 taxonomy API, then question-bank slice; examination UI remains planned.
+
+### QM-009 — Next executable slice
+- Priority: P1; dependencies: QM-006, QM-007; FR-003, TC-008.
+- Goal: Admin creates categories/subjects; Admin and Instructor read paginated lists.
+- Acceptance: trim names; reject blanks/overlong/normalized duplicates; enforce
+  parent FK; reject Student access and non-admin writes; unknown parent 404;
+  duplicate 409; strict JSON; no duplicate rows under concurrent creation.
+- Validation: real PostgreSQL migration/HTTP/DB tests; existing backend tests,
+  frontend suite, docs check and clean diff remain green.
+- Evidence: NOT_RUN; implementation has not started.
 
 ## Codex task creation rules
 

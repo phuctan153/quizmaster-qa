@@ -29,3 +29,13 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Status: COMPLETE on 2026-11-20. Executable auth/account slice, migration and
   3 unit + 24 HTTP/PostgreSQL integration tests PASS; documentation/config checks
   PASS. Standalone manual bootstrap remains NOT_RUN and is documented explicitly.
+
+### PLAN-002 — Auth/account React journey
+- Goal: FR-001/002 in the browser without broadening exam scope.
+- Scope: login, profile, Admin create/list/status, forbidden routes, memory-only
+  bearer token and logout/401. React/Vite, API proxy, component checks and real
+  browser against an isolated fixture; no public hosting.
+- Verification: 12 Vitest tests, build, audit, 27 backend regressions PASS. Live
+  browser results and fixed mobile/401 defects are recorded in UI_JOURNEY.
+- Status: COMPLETE on 2026-11-20. Bootstrap's previous NOT_RUN limitation was
+  resolved for disposable standalone fixture use; persistent Compose remains NOT_RUN.
