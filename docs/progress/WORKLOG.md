@@ -130,3 +130,15 @@
 - Resume: `git status --short`; `python tools/check_docs.py`; read TASKS/QM-008 and
   LOCAL_SETUP. Reproduce backend: `mvn -f backend/pom.xml
   -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE verify`.
+
+### 2026-11-20 — GitHub remote connection — PASS
+- User requested connection to `https://github.com/phuctan153/quizmaster-qa.git`
+  and continuation. Initial worktree clean; no prior remote existed.
+- Added `origin`. Initial HTTPS check failed certificate-chain validation; set
+  repository-local `http.sslBackend=schannel` to use Windows trust, keeping TLS
+  verification enabled. `git ls-remote origin` and `git fetch origin` exited 0
+  with no advertised refs: remote is empty at inspection time. Local history
+  remains intact on master. No push was performed; standing push boundary remains.
+- Verification: `git remote -v`, `git ls-remote origin`, `git fetch origin` PASS.
+- Next: QM-008 React login/identity/Admin UI, component checks and live browser/API
+  validation; retain backend regression. Last backend commit: `d7127de`.

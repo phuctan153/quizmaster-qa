@@ -2,6 +2,9 @@
 
 **Online Examination Management System — QA Automation Portfolio**
 
+GitHub remote: [phuctan153/quizmaster-qa](https://github.com/phuctan153/quizmaster-qa).
+Connected as `origin`; remote synchronization does not imply a deployment.
+
 > **Current status:** QM-001..007 verified on 2026-11-20. First auth/account backend slice implemented: 3 unit + 24 HTTP/PostgreSQL integration tests PASS (no skips). Exam modules, frontend and CI remain unimplemented.
 
 ## Purpose
