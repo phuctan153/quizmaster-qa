@@ -58,3 +58,14 @@
   Maven version printed an additional Access denied line; investigate during build.
 - Next: schema/seed/clock design, API inventory, scenario traceability. Resume with
   `git status --short`; inspect Docker engine with `docker version` before DB tests.
+
+### 2026-11-20 — QM-004 — DONE
+- Added logical ERD/table constraints, lock/index backstops, durable outbox,
+  immutable snapshot plan and isolated seed/reset/clock strategy. Checked primary
+  PostgreSQL 18 and Spring Boot references linked in the design. DEC-09 remains
+  PENDING; selected technical mechanics do not claim a human-approved timing SLA.
+- Verification: design cross-review PASS against FR-006..014 and state invariants;
+  `git diff --check` PASS. SQL migrations/DB tests NOT_RUN (design deliverable only).
+- QM-003 commit: `bd4ec66`. Git: schema-design commit prepared after diff review.
+- Next: API contract and risk-based scenario catalogue; investigate Docker startup
+  and dependency resolution before claiming backend readiness.
