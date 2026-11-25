@@ -231,3 +231,43 @@
   any integration failures; (3) record TC-008 evidence, close QM-009, and proceed
   to the next READY task. Resume with `git status --short --branch` then the Maven
   command above.
+
+### 2026-11-25 — QM-009/010/011 — verified; QM-012 started
+- Resolved the prior Docker verification blocker: sandboxed `docker info` returned
+  permission denied, while the authorized elevated run connected to Docker Desktop
+  29.5.3. `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify` passed after QM-009: 3 unit + 26 HTTP/PostgreSQL integration tests,
+  zero failures/errors/skips; PostgreSQL 18.7; Flyway V1/V2 applied. TC-008 PASS.
+- Implemented QM-010 question create/list/read/update with V3 schema, owner-scoped
+  reads, instructor-only access, question/option validation, a single correct
+  answer, subject FK, and atomic optimistic revisions. The first integration run
+  exposed that the old fixture could not truncate `account` after adding the
+  question FK; changed its disposable-database reset to truncate question options,
+  questions and accounts in FK-safe order. No persistent data was touched.
+- Implemented QM-011 CSV import with strict UTF-8/quoted-field parsing, exact
+  headers, row/field errors, 500-row/1 MiB limits, subject/answer validation and
+  transaction-backed all-or-nothing persistence. Added parser and 500-row HTTP
+  boundary coverage. No new dependency was needed.
+- Final command: `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify` → BUILD SUCCESS on 2026-11-25 12:34 Bangkok; 6 unit + 30 HTTP/PostgreSQL
+  integration tests PASS, zero failures/errors/skips. PostgreSQL 18.7, random
+  HTTP port, Flyway V1–V3. Verified 500 accepted/501 rejected; exact 1 MiB
+  accepted/1 MiB+1 rejected (413); quoted comma/newline; invalid UTF-8/header;
+  row-specific errors and unchanged DB count on invalid batch; ownership, role and
+  concurrent question revision checks. Test XML is generated under ignored
+  `backend/target` reports.
+- TC-008..012 now PASS. QM-009, QM-010 and QM-011 are DONE. QM-012 is IN_PROGRESS:
+  instructor exam draft and immutable publish snapshot. No product decision was
+  changed; DEC-09 remains PENDING. CSV behavior follows the existing SRS/API
+  contract; no new business approval was claimed.
+- Updated README, task board, API contract, scenario evidence and plans. Run
+  `python tools/check_docs.py` and `git diff --check` before commit. The worklog
+  entry for the earlier failed Docker attempt is retained as an accurate historical
+  observation; this entry records its successful resolution.
+- Next actions: (1) finish documentation checker and self-review; (2) commit the
+  verified taxonomy/question/CSV slices with an English Conventional Commit;
+  (3) implement and verify QM-012 exam draft/publish. Reproduce backend with the
+  Maven command above; Docker access from this environment requires elevated
+  command permission for Testcontainers.

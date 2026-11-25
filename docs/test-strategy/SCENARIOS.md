@@ -1,9 +1,7 @@
 # Initial Risk-Based Scenario Catalogue
 
 TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
-TC-008..034 and TC-036 are **NOT_RUN**. TC-008 has implementation coverage drafted,
-but its PostgreSQL/HTTP execution was blocked on 2026-11-25 because Docker Engine
-was unavailable. These are independent
+TC-008..012 are **PASS** on 2026-11-25. TC-013..034 and TC-036 are **NOT_RUN**. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -75,12 +73,36 @@ Admin create/status, inactive login denial and 401 logout against live backend/D
 WORKLOG QM-008 for commands, versions, fixes and screenshot locations. This is
 manual browser execution; no Selenium automation or CI pass is claimed.
 
-TC-008 implementation mapping (execution NOT_RUN):
+TC-008 mapping:
 `IdentityIT.taxonomyEnforcesRolesNormalizationParentAndPagination` and
 `IdentityIT.concurrentNormalizedCategoryCreationCommitsExactlyOneRow`. The
-2026-11-25 `mvn ... verify` run passed 3 unit tests but Failsafe could not start
-the disposable PostgreSQL container because the Docker Desktop Linux Engine pipe
-was absent. This is a blocker, not a passing result.
+2026-11-25 `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT
+-Djavax.net.ssl.trustStore=NONE -B verify` → PASS, 3 unit and 26 integration
+tests with zero failures/errors/skips. PostgreSQL 18.7 Testcontainers, Flyway V1/V2
+and random-port HTTP. Covered RBAC, trim and normalized duplicate handling, blank
+and overlong values, unknown parent, subject filtering/pagination and atomic
+concurrent duplicate category creation. Failsafe XML is generated under
+`backend/target/failsafe-reports` (ignored).
+
+TC-009 and TC-010 PASS (QM-010):
+`IdentityIT.questionBankEnforcesOwnershipAndSingleCorrectOption` validates option
+count, zero/multiple correct options, normalized duplicate labels/text, strict
+JSON, optional difficulty, role restrictions, subject lookup and ownership-based
+404; `IdentityIT.questionUpdateUsesRevisionForConcurrentWriters` verifies one
+200 and one 409 on a concurrent stale revision. Same Maven run as TC-008: 3 unit
++ 28 PostgreSQL/HTTP integration tests PASS, zero failures/errors/skips; migration
+V3 applied to disposable PostgreSQL 18.7. Reports under ignored
+`backend/target/failsafe-reports`.
+
+TC-011 and TC-012 PASS (QM-011): `QuestionCsvParserTest` covers quoted commas,
+escaped quotes, multiline values, malformed quoting, invalid UTF-8, and the
+501-row/1 MiB+1 byte limits. `IdentityIT.csvQuestionImportIsQuotedAndAtomic` covers
+quoted HTTP import, row-specific final-row errors, no partial persistence, header/
+encoding rejection, exact 1 MiB acceptance and 1 MiB+1 rejection (413).
+`IdentityIT.csvImportAcceptsFiveHundredRowsAndRejectsFiveHundredOne` verifies 500
+rows commit and 501 reject without partial persistence. Maven `verify` on
+2026-11-25: 6 unit + 30 HTTP/PostgreSQL tests PASS, zero failures/errors/skips;
+Flyway V1–V3 on disposable PostgreSQL 18.7.
 
 ## Execution strategy
 

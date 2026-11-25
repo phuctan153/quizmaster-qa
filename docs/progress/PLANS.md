@@ -44,5 +44,34 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Goal: deliver FR-003 and TC-008 with database-backed category/subject routes.
 - Scope: admin create category/subject; admin/instructor paginated reads; normalized
   uniqueness, parent FK, role checks and structured conflicts. No taxonomy update/delete.
-- Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify`; unit tests PASS, integration tests require the Docker Linux Engine. Focused PostgreSQL/HTTP tests are required before QM-009 can be marked DONE.
-- Status: BLOCKED on 2026-11-25; migration, repository, service, controller, route security and integration scenarios added. The Testcontainers run cannot connect to Docker Desktop's Linux Engine pipe; acceptance evidence is incomplete.
+- Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify` → BUILD SUCCESS; 3 unit + 26 PostgreSQL/HTTP integration tests PASS, PostgreSQL 18.7; docs and whitespace checks PASS.
+- Status: COMPLETE on 2026-11-25; all four routes, migration, authorization, constraints, duplicate and concurrency behavior verified. Initial Docker access issue was resolved by running the check with Docker permissions.
+
+### PLAN-004 — Instructor question-bank CRUD slice
+- Goal: implement and verify the FR-004 core question workflow before CSV import.
+- Scope: Instructor-owned create/list/read/update endpoints, schema, validation,
+  subject FK and optimistic revision checks. Excludes CSV import and exam snapshots.
+- Dependencies / approved decisions: QM-009; RULE-QUE-001 and RULE-QUE-004; no
+  new business decisions required by the existing SRS/API contract.
+- Phases: question schema and DTOs; transactional persistence/service; ownership
+  and role controls; API validation and revision conflict tests; docs/evidence.
+- Verification: Maven unit + PostgreSQL Testcontainers HTTP suite, doc checker,
+  diff review. Include two-instructor IDOR and stale concurrent update coverage.
+- Risk / rollback: additive V3 migration only; no existing production data.
+- Status: COMPLETE on 2026-11-25; migration V3 and question routes verified by 3 unit and 28 HTTP/PostgreSQL integration tests, including concurrent revision checks.
+
+### PLAN-005 — Atomic CSV question import
+- Goal: implement FR-005 / TC-011 / TC-012 using the approved SRS limits and existing API contract.
+- Scope: multipart upload parsing, field/row validation, limits and transactional import; no question-bank UI.
+- Dependencies: QM-010 complete. UTF-8, exact columns, 1 MiB and 500-row limits are already documented in SRS/API_CONTRACT.
+- Verification: parser tests and real PostgreSQL/HTTP tests for correct quoting, malformed/oversized imports and whole-batch rollback; documentation checker and diff review.
+- Risk / rollback: one additive endpoint; transaction rollback keeps invalid batches out of existing question rows.
+- Status: COMPLETE on 2026-11-25; 6 unit + 30 HTTP/PostgreSQL integration tests PASS, including whole-file validation, transactional insertion, quoting, row errors and file/row boundaries.
+
+### PLAN-006 — Exam draft and publish lifecycle
+- Goal: implement FR-006/007 core draft and immutable publication behavior.
+- Scope: Instructor-owned draft create/read/update and atomic publish snapshot; defer close/version successor, assignments and attempts.
+- Dependencies / approved decisions: QM-010 and QM-011; DEC-04/05 and RULE-EXAM-003/004. Preserve fixed question membership and immutable published content.
+- Verification: PostgreSQL integration and HTTP tests for role/owner access, configuration boundaries, question ownership, revision races, invalid publish rollback and snapshot isolation.
+- Risk / rollback: additive migration, no existing deployment data; use immutable snapshot rows instead of mutable question joins during exam-taking.
+- Status: IN_PROGRESS on 2026-11-25.

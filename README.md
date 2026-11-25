@@ -5,7 +5,7 @@
 GitHub remote: [phuctan153/quizmaster-qa](https://github.com/phuctan153/quizmaster-qa).
 Connected as `origin`; remote synchronization does not imply a deployment.
 
-> **Current status:** Auth/account API and React UI are verified. QM-009 taxonomy routes, migration and PostgreSQL integration scenarios are implemented, but verification is BLOCKED because Docker Desktop's Linux Engine was unavailable on 2026-11-25. Unit tests and documentation checks passed; PostgreSQL/HTTP regression results are not available. Remaining exam modules and CI are unimplemented.
+> **Current status:** Auth/account API, React UI, taxonomy, instructor question-bank CRUD, and atomic CSV import are verified. The latest backend run passed 6 unit and 30 HTTP/PostgreSQL integration tests against PostgreSQL 18.7 on 2026-11-25. QM-012 exam draft/publish lifecycle is in progress; assignments, attempts, results and CI remain unimplemented.
 
 ## Purpose
 
@@ -59,6 +59,7 @@ Implemented: POST `/api/v1/auth/login`, GET `/api/v1/auth/me`, admin POST/GET
 `/api/v1/users`, PATCH `/api/v1/users/{id}/status`. Current account state is checked
 on every token use. Passwords use salted PBKDF2. No default credentials are shipped.
 Admin can create categories and subjects; Admin and Instructor can list them.
+Instructor question-bank create/list/read/update and CSV import routes are implemented and verified. Exam draft/publish is in progress.
 React UI supports sign-in, profile, admin account creation/list/status, role denial
 and logout/401 handling. Token stays in memory; reload requires sign-in again.
 Audit events and the other designed routes remain planned. See `TASKS.md` and the

@@ -21,7 +21,7 @@ public class ApiErrors {
         if (ex.status() == HttpStatus.UNAUTHORIZED) {
             response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
-        return response.body(new ApiError(ex.code(), ex.getMessage()));
+        return response.body(new ApiError(ex.code(), ex.getMessage(), ex.fieldErrors()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -40,6 +40,12 @@ public class ApiErrors {
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     ResponseEntity<ApiError> media(Exception ex) {
         return ResponseEntity.status(415).body(new ApiError("UNSUPPORTED_MEDIA_TYPE", "Content type is not supported"));
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> tooLarge(Exception ex) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(new ApiError("PAYLOAD_TOO_LARGE", "Uploaded file exceeds the permitted size"));
     }
 
     @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)

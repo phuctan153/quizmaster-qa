@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account routes and the four taxonomy routes are implemented. Remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy and instructor question CRUD/import routes are implemented. Exam draft/publish is in progress; remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -47,16 +47,16 @@ also requires the ownership check defined in the access model.
 | POST | /categories | A | Name → Category (201) | FR-003; duplicate 409 DUPLICATE_NAME; implemented |
 | GET | /subjects | A,I | page,size,categoryId? → Page<Subject> | FR-003; implemented |
 | POST | /subjects | A | SubjectInput → Subject (201) | FR-003; parent 404/duplicate 409 DUPLICATE_NAME; implemented |
-| GET | /questions | I | page,size,subjectId? → Page<Question> | FR-004; own only |
-| POST | /questions | I | QuestionInput → Question (201) | FR-004 |
-| GET | /questions/{id} | I | — → Question | FR-004 |
-| PUT | /questions/{id} | I | QuestionUpdate → Question | FR-004; revision 409 |
-| POST | /questions/import | I | multipart file → ImportResult (201) | FR-005; atomic row errors 400 |
+| GET | /questions | I | page,size,subjectId? → Page<Question> | FR-004; own only; implemented |
+| POST | /questions | I | QuestionInput → Question (201) | FR-004; implemented |
+| GET | /questions/{id} | I | — → Question | FR-004; foreign resource 404; implemented |
+| PUT | /questions/{id} | I | QuestionUpdate → Question | FR-004; revision 409; implemented |
+| POST | /questions/import | I | multipart file → ImportResult (201) | FR-005; atomic row errors 400; implemented |
 | GET | /exams | I | page,size → Page<Exam> | FR-006; own only |
-| POST | /exams | I | ExamInput → Exam (201) | FR-006 |
-| GET | /exams/{id} | I | — → Exam | FR-006 |
-| PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409 |
-| POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400 |
+| POST | /exams | I | ExamInput → Exam (201) | FR-006; QM-012 in progress |
+| GET | /exams/{id} | I | — → Exam | FR-006; QM-012 in progress |
+| PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409; QM-012 in progress |
+| POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; QM-012 in progress |
 | POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409 |
 | POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409 |
 | PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409 |
@@ -94,7 +94,7 @@ validation. SRS defines numerical/text bounds.
 | Name | name:string(1–120) |
 | Category | id:UUID, name:string |
 | SubjectInput / Subject | categoryId:UUID,name / plus id:UUID |
-| QuestionInput | subjectId:UUID,prompt:string(1–2000),difficulty?:EASY\|MEDIUM\|HARD,options:array(2–6) of {label:string(1–20),text:string(1–500),correct:boolean}; labels/text distinct, exactly one correct |
+| QuestionInput | subjectId:UUID,prompt:string(1–2000),difficulty?:EASY\|MEDIUM\|HARD,options:array(2–6) of {label:string(1–20),text:string(1–500),correct:boolean}; label/text are trimmed, distinct case-insensitively, exactly one correct |
 | QuestionUpdate | QuestionInput plus revision:integer>=0 |
 | Question | input fields plus id,ownerId,revision; instructor only |
 | ImportResult | imported:integer,questionIds:UUID[]; invalid import uses error field paths `rows[2].correctLabel` |
@@ -113,7 +113,9 @@ validation. SRS defines numerical/text bounds.
 
 CSV headers exactly `subjectId,prompt,optionA,optionB,optionC,optionD,correctLabel`;
 correctLabel A/B/C/D, UTF-8, CSV quoting supports commas/newlines, max 500 data rows
-and 1 MiB. Invalid header/row is 400; oversized file is 413. Full batch rollback.
+and 1 MiB. Invalid header/row is 400 with row/field errors; oversized file is 413.
+The whole file is validated before persistence, and all valid rows commit in one
+transaction. This endpoint is implemented and verified.
 
 ## First executable slice: auth and accounts
 

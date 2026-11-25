@@ -11,6 +11,10 @@ spring:
     deserialization:
       fail-on-unknown-properties: true
       fail-on-numbers-for-enums: true
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 server:
   address: ${SERVER_ADDRESS:127.0.0.1}
   error:
