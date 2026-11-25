@@ -59,7 +59,7 @@ public class QuestionRepository {
         return query.param("owner", ownerId).query(Long.class).single();
     }
 
-    java.util.Optional<Question> byId(UUID id, UUID ownerId) {
+    public java.util.Optional<Question> byId(UUID id, UUID ownerId) {
         var headers = jdbc.sql("SELECT id,owner_id,subject_id,prompt,difficulty,revision FROM question WHERE id=:id AND owner_id=:owner")
                 .param("id", id).param("owner", ownerId).query(HEADER).list();
         return hydrate(headers).stream().findFirst();

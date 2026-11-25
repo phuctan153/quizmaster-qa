@@ -92,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/categories", "/api/v1/subjects").hasRole("ADMIN")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories", "/api/v1/subjects").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers("/api/v1/questions/**").hasRole("INSTRUCTOR")
+                        .requestMatchers("/api/v1/exams", "/api/v1/exams/**").hasRole("INSTRUCTOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, ex) -> writeError(mapper, response, 401))

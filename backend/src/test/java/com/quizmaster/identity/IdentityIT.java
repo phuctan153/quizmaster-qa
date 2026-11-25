@@ -3,6 +3,7 @@ package com.quizmaster.identity;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -72,7 +73,7 @@ class IdentityIT {
     @BeforeEach
     void fixtures() {
         // This connection belongs exclusively to the disposable Testcontainers DB.
-        jdbc.execute("TRUNCATE TABLE question_option, question, account");
+        jdbc.execute("TRUNCATE TABLE exam_option_snapshot, exam_question_snapshot, exam_draft_question, exam_version, question_option, question, account");
         password = UUID.randomUUID().toString();
         admin = seed("admin@example.test", Role.ADMIN, true);
         student = seed("student@example.test", Role.STUDENT, true);
@@ -494,11 +495,154 @@ class IdentityIT {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM question WHERE owner_id=?", Integer.class, instructor.id())).isEqualTo(500);
     }
 
+    @Test
+    void examDraftPublishesOwnedImmutableQuestionSnapshot() {
+        var adminToken = token(admin);
+        var subjectId = createSubject(adminToken);
+        var instructor = seed("exam-owner@example.test", Role.INSTRUCTOR, true);
+        var instructorToken = token(instructor);
+        var questionId = createQuestion(instructorToken, subjectId, "Question before publish");
+        var examBody = examBody(List.of(questionId), "  Midterm  ");
+        var created = request(HttpMethod.POST, "/exams", instructorToken, examBody);
+        assertThat(created.getStatusCode().value()).isEqualTo(201);
+        var examId = created.getBody().get("id").asText();
+        assertThat(created.getBody().get("title").asText()).isEqualTo("Midterm");
+        assertThat(created.getBody().get("state").asText()).isEqualTo("DRAFT");
+        assertThat(created.getBody().get("revision").asInt()).isZero();
+
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken, examBody(List.of(UUID.randomUUID()), "Missing question"))
+                .getStatusCode().value()).isEqualTo(404);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken, examBody(List.of(questionId, questionId), "Duplicate questions"))
+                .getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Invalid duration"), "durationSeconds", 59)).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Duration over max"), "durationSeconds", 10801)).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Invalid attempts"), "attemptLimit", 4)).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Zero attempts"), "attemptLimit", 0)).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Fractional attempts"), "attemptLimit", 1.5)).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Invalid threshold"), "passingThreshold", new java.math.BigDecimal("100.01")))
+                .getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Threshold precision"), "passingThreshold", new java.math.BigDecimal("1.001")))
+                .getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.GET, "/exams", instructorToken, null).getBody().get("total").asInt()).isEqualTo(1);
+        var lowBoundary = examBody(List.of(questionId), "Low boundary");
+        examBodyWith(lowBoundary, "durationSeconds", 60);
+        examBodyWith(lowBoundary, "attemptLimit", 1);
+        examBodyWith(lowBoundary, "passingThreshold", new java.math.BigDecimal("0.00"));
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken, lowBoundary).getStatusCode().value()).isEqualTo(201);
+        var highBoundary = examBody(List.of(questionId), "High boundary");
+        examBodyWith(highBoundary, "durationSeconds", 10800);
+        examBodyWith(highBoundary, "attemptLimit", 3);
+        examBodyWith(highBoundary, "passingThreshold", new java.math.BigDecimal("100.00"));
+        assertThat(request(HttpMethod.POST, "/exams", instructorToken, highBoundary).getStatusCode().value()).isEqualTo(201);
+
+        var other = seed("exam-other@example.test", Role.INSTRUCTOR, true);
+        var otherToken = token(other);
+        assertThat(request(HttpMethod.GET, "/exams/" + examId, otherToken, null).getStatusCode().value()).isEqualTo(404);
+        assertThat(request(HttpMethod.PUT, "/exams/" + examId, otherToken,
+                examUpdateBody(created.getBody(), "Foreign change")).getStatusCode().value()).isEqualTo(404);
+        for (String denied : List.of(token(student), adminToken)) {
+            assertThat(request(HttpMethod.GET, "/exams/" + examId, denied, null).getStatusCode().value()).isEqualTo(403);
+            assertThat(request(HttpMethod.POST, "/exams", denied, examBody(List.of(questionId), "Denied"))
+                    .getStatusCode().value()).isEqualTo(403);
+        }
+
+        var published = request(HttpMethod.POST, "/exams/" + examId + "/publish", instructorToken, Map.of("revision", 0));
+        assertThat(published.getStatusCode().value()).isEqualTo(200);
+        assertThat(published.getBody().get("state").asText()).isEqualTo("PUBLISHED");
+        assertThat(published.getBody().get("revision").asInt()).isEqualTo(1);
+        assertThat(published.getBody().get("questions").get(0).get("prompt").asText()).isEqualTo("Question before publish");
+        assertThat(published.getBody().get("questions").get(0).get("options").get(0).get("correct").asBoolean()).isTrue();
+
+        var changedOptions = Map.of("revision", 0, "subjectId", subjectId, "prompt", "Question after publish", "difficulty", "MEDIUM",
+                "options", List.of(Map.of("label", "X", "text", "Changed answer", "correct", false),
+                        Map.of("label", "Y", "text", "New correct answer", "correct", true)));
+        assertThat(request(HttpMethod.PUT, "/questions/" + questionId, instructorToken, changedOptions)
+                .getStatusCode().value()).isEqualTo(200);
+        var afterEdit = request(HttpMethod.GET, "/exams/" + examId, instructorToken, null).getBody();
+        assertThat(afterEdit.get("questions").get(0).get("prompt").asText()).isEqualTo("Question before publish");
+        assertThat(afterEdit.get("questions").get(0).get("options").get(0).get("label").asText()).isEqualTo("A");
+        assertThat(afterEdit.get("questions").get(0).get("options").get(0).get("text").asText()).isEqualTo("First answer");
+        assertThat(afterEdit.get("questions").get(0).get("options").get(0).get("correct").asBoolean()).isTrue();
+        assertThat(request(HttpMethod.PUT, "/exams/" + examId, instructorToken,
+                examUpdateBody(published.getBody(), "Cannot change published")).getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.POST, "/exams/" + examId + "/publish", instructorToken, Map.of("revision", 1))
+                .getStatusCode().value()).isEqualTo(409);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_question_snapshot WHERE exam_version_id=?", Integer.class,
+                UUID.fromString(examId))).isEqualTo(1);
+    }
+
+    @Test
+    void examDraftConcurrentUpdateHasOneRevisionWinner() throws Exception {
+        var subjectId = createSubject(token(admin));
+        var instructor = seed("exam-race@example.test", Role.INSTRUCTOR, true);
+        var bearer = token(instructor);
+        var questionId = createQuestion(bearer, subjectId, "Race question");
+        var exam = request(HttpMethod.POST, "/exams", bearer, examBody(List.of(questionId), "Race draft"));
+        var examId = exam.getBody().get("id").asText();
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.PUT, "/exams/" + examId, bearer,
+                        examUpdateBody(exam.getBody(), "Race title " + i)).getStatusCode().value();
+            })).toList();
+            gate.countDown();
+            assertThat(List.of(jobs.get(0).get(15, TimeUnit.SECONDS), jobs.get(1).get(15, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(200, 409);
+        }
+        assertThat(request(HttpMethod.GET, "/exams/" + examId, bearer, null).getBody().get("revision").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void invalidPublishRollsBackStateAndSnapshot() {
+        var subjectId = createSubject(token(admin));
+        var instructor = seed("exam-invalid@example.test", Role.INSTRUCTOR, true);
+        var bearer = token(instructor);
+        var questionId = createQuestion(bearer, subjectId, "Question");
+        var exam = request(HttpMethod.POST, "/exams", bearer, examBody(List.of(questionId), "Draft"));
+        var id = UUID.fromString(exam.getBody().get("id").asText());
+        jdbc.update("DELETE FROM exam_draft_question WHERE exam_version_id=?", id);
+
+        var rejected = request(HttpMethod.POST, "/exams/" + id + "/publish", bearer, Map.of("revision", 0));
+        assertThat(rejected.getStatusCode().value()).isEqualTo(400);
+        assertThat(jdbc.queryForObject("SELECT state FROM exam_version WHERE id=?", String.class, id)).isEqualTo("DRAFT");
+        assertThat(jdbc.queryForObject("SELECT revision FROM exam_version WHERE id=?", Integer.class, id)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_question_snapshot WHERE exam_version_id=?", Integer.class, id)).isZero();
+    }
+
     private String createSubject(String adminToken) {
         var category = request(HttpMethod.POST, "/categories", adminToken, Map.of("name", "Question " + UUID.randomUUID()));
         var subject = request(HttpMethod.POST, "/subjects", adminToken,
                 Map.of("categoryId", category.getBody().get("id").asText(), "name", "Subject " + UUID.randomUUID()));
         return subject.getBody().get("id").asText();
+    }
+
+    private String createQuestion(String instructorToken, String subjectId, String prompt) {
+        return request(HttpMethod.POST, "/questions", instructorToken, questionBody(subjectId, prompt))
+                .getBody().get("id").asText();
+    }
+
+    private static Map<String, Object> examBody(List<?> questionIds, String title) {
+        return new HashMap<>(Map.of("title", title, "questionIds", questionIds, "durationSeconds", 1800,
+                "attemptLimit", 2, "passingThreshold", new java.math.BigDecimal("66.67"), "shuffle", true));
+    }
+
+    private static Map<String, Object> examBodyWith(Map<String, Object> body, String field, Object value) {
+        body.put(field, value);
+        return body;
+    }
+
+    private static Map<String, Object> examUpdateBody(JsonNode exam, String title) {
+        return new HashMap<>(Map.of("revision", exam.get("revision").asInt(), "title", title,
+                "questionIds", List.of(exam.get("questionIds").get(0).asText()), "durationSeconds", 1800,
+                "attemptLimit", 2, "passingThreshold", new java.math.BigDecimal("66.67"), "shuffle", true));
     }
 
     private static Map<String, Object> questionBody(Object subjectId, String prompt) {

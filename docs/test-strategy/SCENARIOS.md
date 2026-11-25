@@ -1,7 +1,7 @@
 # Initial Risk-Based Scenario Catalogue
 
 TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
-TC-008..012 are **PASS** on 2026-11-25. TC-013..034 and TC-036 are **NOT_RUN**. These are independent
+TC-008..015 are **PASS** on 2026-11-25. TC-016..034 and TC-036 are **NOT_RUN**. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -103,6 +103,17 @@ encoding rejection, exact 1 MiB acceptance and 1 MiB+1 rejection (413).
 rows commit and 501 reject without partial persistence. Maven `verify` on
 2026-11-25: 6 unit + 30 HTTP/PostgreSQL tests PASS, zero failures/errors/skips;
 Flyway V1–V3 on disposable PostgreSQL 18.7.
+
+TC-013, TC-014 and TC-015 PASS (QM-012):
+`IdentityIT.examDraftPublishesOwnedImmutableQuestionSnapshot` covers invalid and
+boundary settings, duplicate/missing/foreign questions, instructor ownership,
+publish state, and snapshot prompt/options/answer stability after the source
+question and options are edited. It also checks published drafts reject mutation.
+`IdentityIT.examDraftConcurrentUpdateHasOneRevisionWinner` proves one current
+revision wins and the stale request gets 409; `IdentityIT.invalidPublishRollsBackStateAndSnapshot`
+proves an empty draft stays DRAFT with no revision/snapshot changes after rejection.
+Maven `verify` on 2026-11-25: 6 unit + 33 HTTP/PostgreSQL integration tests PASS,
+zero failures/errors/skips; Flyway V1–V4 on disposable PostgreSQL 18.7.
 
 ## Execution strategy
 

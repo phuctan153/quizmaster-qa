@@ -74,4 +74,12 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Dependencies / approved decisions: QM-010 and QM-011; DEC-04/05 and RULE-EXAM-003/004. Preserve fixed question membership and immutable published content.
 - Verification: PostgreSQL integration and HTTP tests for role/owner access, configuration boundaries, question ownership, revision races, invalid publish rollback and snapshot isolation.
 - Risk / rollback: additive migration, no existing deployment data; use immutable snapshot rows instead of mutable question joins during exam-taking.
+- Status: COMPLETE on 2026-11-25; 6 unit + 33 HTTP/PostgreSQL integration tests PASS, including integer boundaries, revision races, invalid-publish rollback and snapshot isolation after source edits.
+
+### PLAN-007 — Close published exams
+- Goal: implement FR-007 transition to stop future starts on an owned published exam.
+- Scope: owner-only PUBLISHED→CLOSED, draft rejection, idempotent repeat close; successor versions excluded.
+- Dependencies / approved decisions: QM-012, DEC-04/05 and current state model.
+- Verification: real PostgreSQL and HTTP tests for role/owner denial, legal/illegal state, repeat close and transaction/concurrency behavior.
+- Risk / rollback: additive state transition only; retain existing snapshots and exam data.
 - Status: IN_PROGRESS on 2026-11-25.

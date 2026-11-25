@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-012 (IN_PROGRESS)** — exam draft and publish lifecycle
-- Last verified task: **QM-011**
+- Current task: **QM-013 (IN_PROGRESS)** — exam close lifecycle
+- Last verified task: **QM-012**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD and atomic CSV import verified; exam draft/publish lifecycle is in progress; assignment/taking/results and CI pending**
+- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, and exam draft/publish snapshot verified; exam close is next; versions/assignments/taking/results and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -27,8 +27,9 @@
 | QM-009 | Categories and subjects API vertical slice | P1 | DONE | QM-006, QM-007 | Four routes and V2 migration verified against PostgreSQL 18.7; 3 unit + 26 HTTP/PostgreSQL integration tests PASS; TC-008 PASS; docs check PASS; see 2026-11-25 worklog |
 | QM-010 | Instructor question-bank CRUD slice | P1 | DONE | QM-009 | Instructor-owned create/list/read/update verified; validation, one correct option, role/owner denial, revision race and migration V3; 3 unit + 28 HTTP/PostgreSQL tests PASS; see 2026-11-25 worklog |
 | QM-011 | Atomic CSV question import | P1 | DONE | QM-010 | UTF-8/multiline CSV; exact headers; row/file limits; row errors; atomic import; 6 unit + 30 HTTP/PostgreSQL tests PASS, including 500-row and exact 1 MiB boundaries; see worklog |
-| QM-012 | Exam draft and publish lifecycle | P1 | IN_PROGRESS | QM-010, QM-011 | Instructor-owned draft CRUD; validate settings/question membership; atomic immutable publish snapshot; PostgreSQL/RBAC/revision integration evidence |
-| QM-013+ | Exam close/version, assignments, taking, scoring and CI | P1 | BACKLOG | QM-012 | Split remaining modules into concrete tasks against existing contracts and approved decisions |
+| QM-012 | Exam draft and publish lifecycle | P1 | DONE | QM-010, QM-011 | Instructor-owned draft CRUD, strict settings/ownership/revision checks, atomic immutable question+option snapshots; 6 unit + 33 HTTP/PostgreSQL tests PASS; TC-013..015 PASS; see worklog |
+| QM-013 | Close published exams | P1 | IN_PROGRESS | QM-012 | Owner-only close transition, draft rejection, repeat-close stability, stale revision/state and PostgreSQL concurrency behavior |
+| QM-014+ | Successor versions, assignments, taking, scoring and CI | P1 | BACKLOG | QM-012, QM-013 | Define snapshot-copy behavior for successor drafts, then split remaining modules into concrete tasks |
 
 ### QM-008 — Verified first UI slice
 - Priority: P1; dependencies: QM-007.
@@ -71,14 +72,32 @@
 - Verification: Maven `verify` BUILD SUCCESS; 6 unit + 30 HTTP/PostgreSQL integration tests PASS against PostgreSQL 18.7. Covered quoted comma/newline parsing, strict UTF-8, header/row errors, no partial persistence on invalid batch, 500 accepted/501 rejected, exactly 1 MiB accepted/1 MiB+1 rejected (413), docs and whitespace checks PASS.
 - Next: QM-012 exam draft and publish lifecycle.
 
-### QM-012 — Exam draft and publish lifecycle
+### QM-012 — Exam draft and publish lifecycle — DONE
 - Priority: P1; dependencies: QM-010, QM-011; FR-006/007, TC-014..016.
 - Goal: let an Instructor configure an owned exam draft and publish an immutable question snapshot.
 - Acceptance: instructor-only own exam create/read/update/publish; validate duration, attempt limit, pass threshold, unique nonempty question IDs and question ownership; stale revision 409; invalid publish leaves draft unchanged; published question content is isolated from later bank edits.
 - Scope: draft CRUD + publish snapshot. Close and successor version creation stay a follow-up task; no assignment/attempt endpoints.
 - Verification: Java tests plus real PostgreSQL/HTTP integration for RBAC, owner IDOR, validation, transaction rollback, revision race and snapshot immutability.
-- Evidence: IN_PROGRESS; requirements/contracts and approved snapshot immutability decision exist; implementation not started.
-- Next: design exam/version and snapshot tables, define DTO validation, then implement migrations and transactional publish.
+- Evidence: V4 schema, routes, `IdentityIT.examDraftPublishesOwnedImmutableQuestionSnapshot`, `IdentityIT.examDraftConcurrentUpdateHasOneRevisionWinner` and `IdentityIT.invalidPublishRollsBackStateAndSnapshot`; TC-013..015 mappings.
+- Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify` → BUILD SUCCESS; 6 unit + 33 HTTP/PostgreSQL integration tests PASS on PostgreSQL 18.7, zero failures/errors/skips. Validation includes exact integer attempt limits and immutable question/option content after source edits.
+- Next: QM-013 owner-only close transition.
+
+### QM-013 — Close published exams
+- Priority: P1; dependency: QM-012; FR-007, TC-016.
+- Goal: stop starts on an owned published exam while preserving snapshots and existing records.
+- Acceptance: Instructor closes own published exam; foreign exam 404; draft close 409; repeated close is stable/idempotent; no snapshot/settings mutation; state/revision reflected consistently.
+- Scope: close endpoint only. Successor version cloning is QM-014 because copying a published snapshot into an editable draft needs an explicit technical contract.
+- Verification: real PostgreSQL/HTTP tests for role/owner boundaries, allowed/denied states, repeated request, and close/update concurrency.
+- Evidence: IN_PROGRESS; route and lifecycle are in contract/access design; implementation not started.
+- Next: add transactional close state transition and tests.
+
+### QM-014 — Successor exam versions
+- Priority: P1; dependency: QM-012; FR-007, TC-015/016.
+- Goal: create a new draft version without altering its published source.
+- Proposed technical assumption: copy the published question/option snapshot and exam settings into the new draft so later bank edits cannot silently change the successor's starting content. The human-approved immutable published-content rule remains unchanged.
+- Verification: full source/successor DB and HTTP comparison, owner denial, version numbering uniqueness and migration safety.
+- Evidence: BACKLOG; pending QM-013 and implementation design.
+- Next: settle draft representation for copied snapshot content while retaining existing API semantics.
 
 ## Codex task creation rules
 

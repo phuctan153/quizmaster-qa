@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account, taxonomy and instructor question CRUD/import routes are implemented. Exam draft/publish is in progress; remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, and exam draft/publish routes are implemented. Exam close is in progress; successor versions and remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -52,13 +52,13 @@ also requires the ownership check defined in the access model.
 | GET | /questions/{id} | I | — → Question | FR-004; foreign resource 404; implemented |
 | PUT | /questions/{id} | I | QuestionUpdate → Question | FR-004; revision 409; implemented |
 | POST | /questions/import | I | multipart file → ImportResult (201) | FR-005; atomic row errors 400; implemented |
-| GET | /exams | I | page,size → Page<Exam> | FR-006; own only |
-| POST | /exams | I | ExamInput → Exam (201) | FR-006; QM-012 in progress |
-| GET | /exams/{id} | I | — → Exam | FR-006; QM-012 in progress |
-| PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409; QM-012 in progress |
-| POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; QM-012 in progress |
-| POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409 |
-| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409 |
+| GET | /exams | I | page,size → Page<Exam> | FR-006; own only; implemented |
+| POST | /exams | I | ExamInput → Exam (201) | FR-006; implemented |
+| GET | /exams/{id} | I | — → Exam | FR-006; own only; implemented |
+| PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409; implemented |
+| POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; immutable snapshots; implemented |
+| POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409; QM-013 in progress |
+| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409; QM-014 planned |
 | PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409 |
 | GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008 |
 | GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only |

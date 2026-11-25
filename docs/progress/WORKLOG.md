@@ -271,3 +271,32 @@
   (3) implement and verify QM-012 exam draft/publish. Reproduce backend with the
   Maven command above; Docker access from this environment requires elevated
   command permission for Testcontainers.
+
+### 2026-11-25 — QM-012 — exam draft/publish verified; QM-013 started
+- Implemented exam draft create/list/read/update/publish with owner-only Instructor
+  access, settings and question membership validation, optimistic revision checks,
+  V4 exam/version and draft-question schema, and copied immutable question/option
+  snapshots. Invalid publish rolls back state/revision and creates no snapshots.
+- Integration tests exposed two defects and drove fixes: a provenance FK from
+  snapshot option rows blocked source-question option replacement, so the snapshot
+  now retains the source option UUID without a restrictive FK; and JSON `1.5` for
+  `attemptLimit` was coerced to integer `1`, so request DTOs now validate integer
+  values as scale-zero decimals before exact conversion. The final test confirms
+  fractional attempt limits return 400 and source question/options remain editable
+  while the published snapshot stays unchanged.
+- Final command: `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify` → BUILD SUCCESS on 2026-11-25 12:53 Bangkok; 6 unit + 33 HTTP/PostgreSQL
+  integration tests PASS, zero failures/errors/skips; PostgreSQL 18.7, Flyway
+  V1–V4, random HTTP port. Covers role/owner denial, settings boundaries, attempt
+  limit 0/1/3/4/1.5, duplicate/missing/foreign questions, concurrent revisions,
+  invalid-publish rollback and question/option snapshot isolation.
+- TC-013..015 PASS. QM-012 DONE. QM-013 (exam close) IN_PROGRESS. TC-016 remains
+  NOT_RUN because close and successor version routes are not implemented yet.
+  DEC-09 remains PENDING; no approved product decisions changed.
+- Updated task board, README, API contract, test evidence and plan. Next actions:
+  (1) implement close transition with draft/foreign/repeat/concurrency cases;
+  (2) verify using the Maven command above with Docker permission; (3) design and
+  implement version cloning of snapshot content. Reproduce current checks using
+  the same Maven command; Docker access requires elevated command permission in
+  this environment.
