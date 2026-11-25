@@ -82,4 +82,12 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Dependencies / approved decisions: QM-012, DEC-04/05 and current state model.
 - Verification: real PostgreSQL and HTTP tests for role/owner denial, legal/illegal state, repeat close and transaction/concurrency behavior.
 - Risk / rollback: additive state transition only; retain existing snapshots and exam data.
+- Status: COMPLETE on 2026-11-25; 6 unit + 34 HTTP/PostgreSQL integration tests PASS, including concurrent idempotent close and denied state transitions.
+
+### PLAN-008 — Successor exam versions
+- Goal: implement FR-007 new-version creation from a published or closed source.
+- Scope: immutable source version, incremented family version number, copied settings and question/option snapshot as the new editable draft's starting content.
+- Dependencies / approved decisions: QM-012 and QM-013; DEC-04/05, RULE-EXAM-003/004. This is a reversible technical interpretation of existing SRS version-copy behavior.
+- Verification: real PostgreSQL/HTTP checks for source unchanged, copied prompt/options/answer key/settings, owner denial, version-number uniqueness and concurrent duplicate version requests.
+- Risk / rollback: additive V5 migration; no data rewrite. Draft representation must keep copied snapshot content independent of subsequent bank edits.
 - Status: IN_PROGRESS on 2026-11-25.

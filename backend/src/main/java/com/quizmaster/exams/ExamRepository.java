@@ -101,6 +101,12 @@ public class ExamRepository {
         return true;
     }
 
+    boolean close(UUID id, UUID ownerId, Instant now) {
+        return jdbc.sql("UPDATE exam_version SET state='CLOSED',revision=revision+1,updated_at=:now "
+                        + "WHERE id=:id AND owner_id=:owner AND state='PUBLISHED'")
+                .param("now", Timestamp.from(now)).param("id", id).param("owner", ownerId).update() == 1;
+    }
+
     private void insertDraftQuestionIds(UUID examId, List<UUID> questionIds) {
         for (int position = 0; position < questionIds.size(); position++) {
             jdbc.sql("INSERT INTO exam_draft_question (exam_version_id,question_id,position) VALUES (:exam,:question,:position)")

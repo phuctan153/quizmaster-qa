@@ -68,6 +68,16 @@ public class ExamService {
         return read(id, ownerId);
     }
 
+    @Transactional
+    public Exam close(UUID id, UUID ownerId) {
+        var exam = exams.byId(id, ownerId).orElseThrow(ExamService::notFound);
+        if (exam.state() == ExamState.DRAFT) {
+            throw new ApiException(HttpStatus.CONFLICT, "STATE_CONFLICT", "A draft exam cannot be closed");
+        }
+        if (exam.state() == ExamState.PUBLISHED) exams.close(id, ownerId, clock.instant());
+        return read(id, ownerId);
+    }
+
     private Exam requireDraft(UUID id, UUID ownerId, int revision) {
         var exam = exams.byId(id, ownerId).orElseThrow(ExamService::notFound);
         if (exam.state() != ExamState.DRAFT) {

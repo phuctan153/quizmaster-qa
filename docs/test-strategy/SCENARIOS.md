@@ -1,7 +1,7 @@
 # Initial Risk-Based Scenario Catalogue
 
 TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
-TC-008..015 are **PASS** on 2026-11-25. TC-016..034 and TC-036 are **NOT_RUN**. These are independent
+TC-008..016 are **PASS** on 2026-11-25. TC-017..034 and TC-036 are **NOT_RUN**. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -114,6 +114,14 @@ revision wins and the stale request gets 409; `IdentityIT.invalidPublishRollsBac
 proves an empty draft stays DRAFT with no revision/snapshot changes after rejection.
 Maven `verify` on 2026-11-25: 6 unit + 33 HTTP/PostgreSQL integration tests PASS,
 zero failures/errors/skips; Flyway V1–V4 on disposable PostgreSQL 18.7.
+
+TC-016 PASS (QM-013): `IdentityIT.closeRequiresPublishedOwnedExamAndIsIdempotentUnderConcurrency`
+verifies draft close 409, concurrent close requests both return the stable CLOSED
+resource at revision 2, Student/Admin 403, foreign Instructor 404, repeated close
+does not increment revision, and closed exams cannot be republished or edited.
+QM-012 separately verifies PUBLISHED→edit 409. Maven `verify` on 2026-11-25:
+6 unit + 34 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips;
+PostgreSQL 18.7, Flyway V1–V4.
 
 ## Execution strategy
 

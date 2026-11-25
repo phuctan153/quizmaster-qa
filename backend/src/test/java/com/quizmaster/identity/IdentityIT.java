@@ -617,6 +617,50 @@ class IdentityIT {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_question_snapshot WHERE exam_version_id=?", Integer.class, id)).isZero();
     }
 
+    @Test
+    void closeRequiresPublishedOwnedExamAndIsIdempotentUnderConcurrency() throws Exception {
+        var subjectId = createSubject(token(admin));
+        var instructor = seed("exam-close@example.test", Role.INSTRUCTOR, true);
+        var bearer = token(instructor);
+        var questionId = createQuestion(bearer, subjectId, "Close question");
+        var draft = request(HttpMethod.POST, "/exams", bearer, examBody(List.of(questionId), "Close test"));
+        var examId = draft.getBody().get("id").asText();
+        assertThat(request(HttpMethod.POST, "/exams/" + examId + "/close", bearer, null).getStatusCode().value()).isEqualTo(409);
+        var published = request(HttpMethod.POST, "/exams/" + examId + "/publish", bearer, Map.of("revision", 0));
+        assertThat(published.getStatusCode().value()).isEqualTo(200);
+
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, "/exams/" + examId + "/close", bearer, null);
+            })).toList();
+            gate.countDown();
+            var responses = List.of(jobs.get(0).get(15, TimeUnit.SECONDS), jobs.get(1).get(15, TimeUnit.SECONDS));
+            assertThat(responses).allSatisfy(response -> {
+                assertThat(response.getStatusCode().value()).isEqualTo(200);
+                assertThat(response.getBody().get("state").asText()).isEqualTo("CLOSED");
+                assertThat(response.getBody().get("revision").asInt()).isEqualTo(2);
+            });
+        }
+        var studentToken = token(student);
+        var adminToken = token(admin);
+        for (String denied : List.of(studentToken, adminToken)) {
+            assertThat(request(HttpMethod.POST, "/exams/" + examId + "/close", denied, null).getStatusCode().value()).isEqualTo(403);
+        }
+        var other = seed("exam-close-other@example.test", Role.INSTRUCTOR, true);
+        assertThat(request(HttpMethod.POST, "/exams/" + examId + "/close", token(other), null).getStatusCode().value()).isEqualTo(404);
+        var repeated = request(HttpMethod.POST, "/exams/" + examId + "/close", bearer, null);
+        assertThat(repeated.getStatusCode().value()).isEqualTo(200);
+        assertThat(repeated.getBody().get("revision").asInt()).isEqualTo(2);
+        assertThat(request(HttpMethod.POST, "/exams/" + examId + "/publish", bearer, Map.of("revision", 1))
+                .getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.PUT, "/exams/" + examId, bearer,
+                examUpdateBody(repeated.getBody(), "Closed update")).getStatusCode().value()).isEqualTo(409);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_question_snapshot WHERE exam_version_id=?", Integer.class,
+                UUID.fromString(examId))).isEqualTo(1);
+    }
+
     private String createSubject(String adminToken) {
         var category = request(HttpMethod.POST, "/categories", adminToken, Map.of("name", "Question " + UUID.randomUUID()));
         var subject = request(HttpMethod.POST, "/subjects", adminToken,

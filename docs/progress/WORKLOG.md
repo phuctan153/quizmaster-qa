@@ -300,3 +300,23 @@
   implement version cloning of snapshot content. Reproduce current checks using
   the same Maven command; Docker access requires elevated command permission in
   this environment.
+
+### 2026-11-25 — QM-013 — exam close verified; QM-014 started
+- Added `POST /api/v1/exams/{id}/close`. Only the owning Instructor may close a
+  published exam; drafts return 409, foreign resources 404, and Admin/Student 403.
+  Repeated or concurrent close requests return the same CLOSED state and do not
+  increment revision more than once. Published snapshots remain intact.
+- Final command: `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify` → BUILD SUCCESS on 2026-11-25 12:58 Bangkok; 6 unit + 34 HTTP/PostgreSQL
+  integration tests PASS, zero failures/errors/skips; PostgreSQL 18.7, Flyway
+  V1–V4, random HTTP port. Includes two barrier-started concurrent close requests.
+- TC-016 PASS; QM-013 DONE. The prior QM-012 entry's note that TC-016 was NOT_RUN
+  was accurate at that point and is superseded by this execution. QM-014
+  successor-version creation is IN_PROGRESS. No approved business decision
+  changed; DEC-09 remains PENDING.
+- Documentation updated; run `python tools/check_docs.py` and `git diff --check`
+  before commit. Next: define and implement successor draft storage that preserves
+  the published snapshot despite edits to bank questions, then verify full version
+  isolation and unique version numbering. Backend reproduction command remains
+  the Maven verify command above; Testcontainers requires elevated Docker access.

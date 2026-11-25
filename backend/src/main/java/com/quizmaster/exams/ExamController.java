@@ -53,4 +53,9 @@ public class ExamController {
                  @Valid @RequestBody ExamRequests.Revision request) {
         return service.publish(id, actor.id(), request);
     }
+
+    @PostMapping("/{id}/close")
+    Exam close(@PathVariable UUID id, @AuthenticationPrincipal AccountView actor) {
+        return service.close(id, actor.id());
+    }
 }

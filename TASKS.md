@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-013 (IN_PROGRESS)** — exam close lifecycle
-- Last verified task: **QM-012**
+- Current task: **QM-014 (IN_PROGRESS)** — successor exam versions
+- Last verified task: **QM-013**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, and exam draft/publish snapshot verified; exam close is next; versions/assignments/taking/results and CI pending**
+- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, exam draft/publish snapshots and close verified; successor versions are in progress; assignments/taking/results and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -28,8 +28,9 @@
 | QM-010 | Instructor question-bank CRUD slice | P1 | DONE | QM-009 | Instructor-owned create/list/read/update verified; validation, one correct option, role/owner denial, revision race and migration V3; 3 unit + 28 HTTP/PostgreSQL tests PASS; see 2026-11-25 worklog |
 | QM-011 | Atomic CSV question import | P1 | DONE | QM-010 | UTF-8/multiline CSV; exact headers; row/file limits; row errors; atomic import; 6 unit + 30 HTTP/PostgreSQL tests PASS, including 500-row and exact 1 MiB boundaries; see worklog |
 | QM-012 | Exam draft and publish lifecycle | P1 | DONE | QM-010, QM-011 | Instructor-owned draft CRUD, strict settings/ownership/revision checks, atomic immutable question+option snapshots; 6 unit + 33 HTTP/PostgreSQL tests PASS; TC-013..015 PASS; see worklog |
-| QM-013 | Close published exams | P1 | IN_PROGRESS | QM-012 | Owner-only close transition, draft rejection, repeat-close stability, stale revision/state and PostgreSQL concurrency behavior |
-| QM-014+ | Successor versions, assignments, taking, scoring and CI | P1 | BACKLOG | QM-012, QM-013 | Define snapshot-copy behavior for successor drafts, then split remaining modules into concrete tasks |
+| QM-013 | Close published exams | P1 | DONE | QM-012 | Owner-only close; draft rejected; repeat/concurrent close stable with one revision increment; role/foreign denials; 6 unit + 34 HTTP/PostgreSQL tests PASS; TC-016 PASS |
+| QM-014 | Successor exam versions | P1 | IN_PROGRESS | QM-012, QM-013 | Copy immutable published snapshot/settings into a new editable draft; preserve source; owner/version-number checks and PostgreSQL isolation evidence |
+| QM-015+ | Assignments, taking, scoring and CI | P1 | BACKLOG | QM-014 | Split remaining modules into concrete tasks |
 
 ### QM-008 — Verified first UI slice
 - Priority: P1; dependencies: QM-007.
@@ -82,22 +83,23 @@
 - Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify` → BUILD SUCCESS; 6 unit + 33 HTTP/PostgreSQL integration tests PASS on PostgreSQL 18.7, zero failures/errors/skips. Validation includes exact integer attempt limits and immutable question/option content after source edits.
 - Next: QM-013 owner-only close transition.
 
-### QM-013 — Close published exams
+### QM-013 — Close published exams — DONE
 - Priority: P1; dependency: QM-012; FR-007, TC-016.
 - Goal: stop starts on an owned published exam while preserving snapshots and existing records.
 - Acceptance: Instructor closes own published exam; foreign exam 404; draft close 409; repeated close is stable/idempotent; no snapshot/settings mutation; state/revision reflected consistently.
 - Scope: close endpoint only. Successor version cloning is QM-014 because copying a published snapshot into an editable draft needs an explicit technical contract.
 - Verification: real PostgreSQL/HTTP tests for role/owner boundaries, allowed/denied states, repeated request, and close/update concurrency.
-- Evidence: IN_PROGRESS; route and lifecycle are in contract/access design; implementation not started.
-- Next: add transactional close state transition and tests.
+- Evidence: `ExamService.close`; `IdentityIT.closeRequiresPublishedOwnedExamAndIsIdempotentUnderConcurrency`; contract and TC-016 mapping.
+- Verification: Maven `verify` BUILD SUCCESS; 6 unit + 34 HTTP/PostgreSQL integration tests PASS on PostgreSQL 18.7; concurrent close returns CLOSED at revision 2 exactly once.
+- Next: QM-014 successor exam versions.
 
 ### QM-014 — Successor exam versions
 - Priority: P1; dependency: QM-012; FR-007, TC-015/016.
 - Goal: create a new draft version without altering its published source.
 - Proposed technical assumption: copy the published question/option snapshot and exam settings into the new draft so later bank edits cannot silently change the successor's starting content. The human-approved immutable published-content rule remains unchanged.
 - Verification: full source/successor DB and HTTP comparison, owner denial, version numbering uniqueness and migration safety.
-- Evidence: BACKLOG; pending QM-013 and implementation design.
-- Next: settle draft representation for copied snapshot content while retaining existing API semantics.
+- Evidence: IN_PROGRESS; technical assumption recorded above; implementation not started.
+- Next: preserve snapshot content in the successor draft and prove source immutability/version numbering with PostgreSQL.
 
 ## Codex task creation rules
 

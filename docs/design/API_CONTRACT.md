@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, and exam draft/publish routes are implemented. Exam close is in progress; successor versions and remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, and exam draft/publish/close routes are implemented. Successor versions and remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -57,8 +57,8 @@ also requires the ownership check defined in the access model.
 | GET | /exams/{id} | I | — → Exam | FR-006; own only; implemented |
 | PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409; implemented |
 | POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; immutable snapshots; implemented |
-| POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409; QM-013 in progress |
-| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409; QM-014 planned |
+| POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409; repeated close stable; implemented |
+| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409; QM-014 in progress |
 | PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409 |
 | GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008 |
 | GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only |
