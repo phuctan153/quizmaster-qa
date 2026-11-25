@@ -320,3 +320,11 @@
   the published snapshot despite edits to bank questions, then verify full version
   isolation and unique version numbering. Backend reproduction command remains
   the Maven verify command above; Testcontainers requires elevated Docker access.
+
+### 2026-11-25 — QM-014 — successor exam versions verified; QM-015 started
+- Added `POST /api/v1/exams/{id}/versions` to create an editable successor draft from an owned published or closed version. The successor copies settings and immutable question/option snapshots; edits to source-bank questions do not change its copied content. Existing snapshot tables are reused, so no migration was needed.
+- Version allocation locks the source exam row and computes the next family version atomically. Tests verify concurrent requests produce distinct version numbers, source state remains unchanged, a draft cannot be used as source, and foreign-owner/Admin/Student access is denied.
+- Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify` → BUILD SUCCESS on 2026-11-25 13:05 Bangkok; 6 unit + 35 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips; PostgreSQL 18.7, Flyway V1–V4. `python tools/check_docs.py` and `git diff --check` PASS after documentation updates.
+- QM-014 DONE; TC-017 coverage added. QM-015 (exam assignments) IN_PROGRESS. DEC-09 remains PENDING; no approved product decisions changed.
+- Files: exam controller/repository/service, `IdentityIT`, API contract, scenarios, plan, README and task board. Commit follows self-review.
+- Next: implement QM-015 persistence and three assignment routes; verify idempotent assignment, owner/role/status boundaries, pagination and student isolation. Reproduce backend with the Maven command above; Docker/Testcontainers requires elevated command permission in this environment.

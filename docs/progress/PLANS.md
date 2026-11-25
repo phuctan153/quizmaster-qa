@@ -89,5 +89,13 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Scope: immutable source version, incremented family version number, copied settings and question/option snapshot as the new editable draft's starting content.
 - Dependencies / approved decisions: QM-012 and QM-013; DEC-04/05, RULE-EXAM-003/004. This is a reversible technical interpretation of existing SRS version-copy behavior.
 - Verification: real PostgreSQL/HTTP checks for source unchanged, copied prompt/options/answer key/settings, owner denial, version-number uniqueness and concurrent duplicate version requests.
-- Risk / rollback: additive V5 migration; no data rewrite. Draft representation must keep copied snapshot content independent of subsequent bank edits.
+- Risk / rollback: reused V4 snapshot schema; no data rewrite or new migration. Draft snapshots stay independent of subsequent bank edits.
+- Status: COMPLETE on 2026-11-25; 6 unit + 35 HTTP/PostgreSQL integration tests PASS, including immutable copy and concurrent version numbering.
+
+### PLAN-009 — Exam assignment API
+- Goal: implement FR-008 assignment creation and the two required list flows.
+- Scope: Instructor assigns an owned PUBLISHED version to active Students; duplicate requests return the existing row; instructor roster and Student own-assignment list. No attempt start or revocation.
+- Dependencies / approved decisions: QM-014; existing ACCESS_AND_STATES and API contract. Assignment is unique by exam version/student.
+- Verification: PostgreSQL/HTTP role, owner, student-status, draft/closed state, idempotency, list filtering/pagination and no cross-student leakage.
+- Risk / rollback: additive migration with a composite unique constraint; no destructive changes.
 - Status: IN_PROGRESS on 2026-11-25.

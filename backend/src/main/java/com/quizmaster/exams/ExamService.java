@@ -1,6 +1,7 @@
 package com.quizmaster.exams;
 
 import com.quizmaster.questions.Question;
+import com.quizmaster.questions.Difficulty;
 import com.quizmaster.questions.QuestionRepository;
 import com.quizmaster.shared.ApiException;
 import java.time.Clock;
@@ -49,9 +50,9 @@ public class ExamService {
     @Transactional
     public Exam update(UUID id, UUID ownerId, ExamRequests.Update request) {
         validate(request.input());
-        requireDraft(id, ownerId, request.revision());
-        ownedQuestions(ownerId, request.questionIds());
-        if (!exams.updateDraft(id, ownerId, request, clock.instant())) {
+        var draft = requireDraft(id, ownerId, request.revision());
+        var selected = resolveQuestions(ownerId, request.questionIds(), draft.questions());
+        if (!exams.updateDraft(id, ownerId, request, selected, clock.instant())) {
             throw new ApiException(HttpStatus.CONFLICT, "REVISION_CONFLICT", "Exam revision is stale");
         }
         return read(id, ownerId);
@@ -61,11 +62,25 @@ public class ExamService {
     public Exam publish(UUID id, UUID ownerId, ExamRequests.Revision request) {
         var draft = requireDraft(id, ownerId, request.revision());
         if (draft.questionIds().isEmpty()) throw invalid("A published exam must contain at least one question");
-        var selected = ownedQuestions(ownerId, draft.questionIds());
+        var selected = resolveQuestions(ownerId, draft.questionIds(), draft.questions());
         if (!exams.publish(id, ownerId, request.revision(), selected, clock.instant())) {
             throw new ApiException(HttpStatus.CONFLICT, "REVISION_CONFLICT", "Exam revision is stale");
         }
         return read(id, ownerId);
+    }
+
+    @Transactional
+    public Exam createSuccessor(UUID sourceId, UUID ownerId) {
+        var source = exams.lockById(sourceId, ownerId).orElseThrow(ExamService::notFound);
+        if (source.state() == ExamState.DRAFT) {
+            throw new ApiException(HttpStatus.CONFLICT, "STATE_CONFLICT", "A successor requires a published or closed source");
+        }
+        if (source.questions().isEmpty()) throw invalid("A source exam must contain a published snapshot");
+        var successor = new Exam(UUID.randomUUID(), source.familyId(), exams.nextVersionNumber(source.familyId()), ownerId,
+                source.title(), ExamState.DRAFT, source.durationSeconds(), source.attemptLimit(), source.passingThreshold(),
+                source.shuffle(), 0, source.questionIds(), source.questions());
+        exams.insertSuccessor(successor, clock.instant());
+        return read(successor.id(), ownerId);
     }
 
     @Transactional
@@ -93,6 +108,25 @@ public class ExamService {
         var result = new ArrayList<Question>();
         for (UUID id : ids) result.add(questions.byId(id, ownerId).orElseThrow(ExamService::notFound));
         return List.copyOf(result);
+    }
+
+    private List<Question> resolveQuestions(UUID ownerId, List<UUID> ids, List<Exam.QuestionSnapshot> pinnedSnapshots) {
+        var pinned = pinnedSnapshots.stream().collect(java.util.stream.Collectors.toMap(
+                Exam.QuestionSnapshot::sourceQuestionId, snapshot -> snapshot));
+        var selected = new ArrayList<Question>();
+        for (UUID id : ids) {
+            var question = questions.byId(id, ownerId).orElseThrow(ExamService::notFound);
+            var snapshot = pinned.get(id);
+            if (snapshot == null) {
+                selected.add(question);
+            } else {
+                var options = snapshot.options().stream().map(option -> new Question.Option(
+                        option.id(), option.label(), option.text(), option.correct())).toList();
+                selected.add(new Question(question.id(), ownerId, question.subjectId(), snapshot.prompt(),
+                        snapshot.difficulty() == null ? null : Difficulty.valueOf(snapshot.difficulty()), 0, options));
+            }
+        }
+        return List.copyOf(selected);
     }
 
     private static void validate(ExamRequests.Input request) {

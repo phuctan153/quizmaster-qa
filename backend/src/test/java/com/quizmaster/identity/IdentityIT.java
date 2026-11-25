@@ -661,6 +661,76 @@ class IdentityIT {
                 UUID.fromString(examId))).isEqualTo(1);
     }
 
+    @Test
+    void successorVersionCopiesPublishedSnapshotAndAllocatesUniqueNumbersConcurrently() throws Exception {
+        var adminToken = token(admin);
+        var subjectId = createSubject(adminToken);
+        var instructor = seed("exam-version-owner@example.test", Role.INSTRUCTOR, true);
+        var bearer = token(instructor);
+        var questionId = createQuestion(bearer, subjectId, "Original published question");
+        var source = request(HttpMethod.POST, "/exams", bearer, examBody(List.of(questionId), "Version family"));
+        var sourceId = source.getBody().get("id").asText();
+        var published = request(HttpMethod.POST, "/exams/" + sourceId + "/publish", bearer, Map.of("revision", 0));
+        assertThat(published.getStatusCode().value()).isEqualTo(200);
+
+        var editedBank = Map.of("revision", 0, "subjectId", subjectId, "prompt", "Changed bank question", "difficulty", "HARD",
+                "options", List.of(Map.of("label", "X", "text", "Changed option", "correct", false),
+                        Map.of("label", "Y", "text", "Changed correct", "correct", true)));
+        assertThat(request(HttpMethod.PUT, "/questions/" + questionId, bearer, editedBank).getStatusCode().value()).isEqualTo(200);
+        var draftSource = request(HttpMethod.POST, "/exams", bearer, examBody(List.of(questionId), "Draft source"));
+        assertThat(request(HttpMethod.POST, "/exams/" + draftSource.getBody().get("id").asText() + "/versions", bearer, null)
+                .getStatusCode().value()).isEqualTo(409);
+
+        var other = seed("exam-version-other@example.test", Role.INSTRUCTOR, true);
+        assertThat(request(HttpMethod.POST, "/exams/" + sourceId + "/versions", token(other), null).getStatusCode().value()).isEqualTo(404);
+        for (String denied : List.of(adminToken, token(student))) {
+            assertThat(request(HttpMethod.POST, "/exams/" + sourceId + "/versions", denied, null).getStatusCode().value()).isEqualTo(403);
+        }
+
+        var version2 = request(HttpMethod.POST, "/exams/" + sourceId + "/versions", bearer, null);
+        assertThat(version2.getStatusCode().value()).isEqualTo(201);
+        assertThat(version2.getHeaders().getLocation().toString()).startsWith("/api/v1/exams/");
+        assertThat(version2.getBody().get("familyId").asText()).isEqualTo(published.getBody().get("familyId").asText());
+        assertThat(version2.getBody().get("versionNumber").asInt()).isEqualTo(2);
+        assertThat(version2.getBody().get("state").asText()).isEqualTo("DRAFT");
+        assertThat(version2.getBody().get("durationSeconds").asInt()).isEqualTo(published.getBody().get("durationSeconds").asInt());
+        assertThat(version2.getBody().get("attemptLimit").asInt()).isEqualTo(published.getBody().get("attemptLimit").asInt());
+        assertThat(version2.getBody().get("passingThreshold").decimalValue()).isEqualByComparingTo(published.getBody().get("passingThreshold").decimalValue());
+        assertThat(version2.getBody().get("questions").get(0).get("prompt").asText()).isEqualTo("Original published question");
+        assertThat(version2.getBody().get("questions").get(0).get("options").get(0).get("text").asText()).isEqualTo("First answer");
+        assertThat(version2.getBody().get("questions").get(0).get("options").get(0).get("correct").asBoolean()).isTrue();
+
+        var update = examUpdateBody(version2.getBody(), "Edited successor draft");
+        assertThat(request(HttpMethod.PUT, "/exams/" + version2.getBody().get("id").asText(), bearer, update).getStatusCode().value()).isEqualTo(200);
+        var changedAgain = Map.of("revision", 1, "subjectId", subjectId, "prompt", "Changed bank again", "difficulty", "EASY",
+                "options", List.of(Map.of("label", "X", "text", "Last option", "correct", true),
+                        Map.of("label", "Y", "text", "Last distractor", "correct", false)));
+        assertThat(request(HttpMethod.PUT, "/questions/" + questionId, bearer, changedAgain).getStatusCode().value()).isEqualTo(200);
+        var successor = request(HttpMethod.GET, "/exams/" + version2.getBody().get("id").asText(), bearer, null).getBody();
+        assertThat(successor.get("title").asText()).isEqualTo("Edited successor draft");
+        assertThat(successor.get("questions").get(0).get("prompt").asText()).isEqualTo("Original published question");
+        assertThat(successor.get("questions").get(0).get("options").get(0).get("text").asText()).isEqualTo("First answer");
+        assertThat(request(HttpMethod.POST, "/exams/" + successor.get("id").asText() + "/publish", bearer,
+                Map.of("revision", successor.get("revision").asInt())).getStatusCode().value()).isEqualTo(200);
+
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, "/exams/" + sourceId + "/versions", bearer, null);
+            })).toList();
+            gate.countDown();
+            var responses = List.of(jobs.get(0).get(15, TimeUnit.SECONDS), jobs.get(1).get(15, TimeUnit.SECONDS));
+            assertThat(responses).allSatisfy(response -> assertThat(response.getStatusCode().value()).isEqualTo(201));
+            assertThat(responses.stream().map(response -> response.getBody().get("versionNumber").asInt()).toList())
+                    .containsExactlyInAnyOrder(3, 4);
+        }
+        var sourceAfter = request(HttpMethod.GET, "/exams/" + sourceId, bearer, null).getBody();
+        assertThat(sourceAfter.get("state").asText()).isEqualTo("PUBLISHED");
+        assertThat(sourceAfter.get("revision").asInt()).isEqualTo(1);
+        assertThat(sourceAfter.get("questions").get(0).get("prompt").asText()).isEqualTo("Original published question");
+    }
+
     private String createSubject(String adminToken) {
         var category = request(HttpMethod.POST, "/categories", adminToken, Map.of("name", "Question " + UUID.randomUUID()));
         var subject = request(HttpMethod.POST, "/subjects", adminToken,

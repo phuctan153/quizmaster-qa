@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, and exam draft/publish/close routes are implemented. Successor versions and remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, exam draft/publish/close and successor version routes are implemented. Exam assignments are in progress; remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -58,10 +58,10 @@ also requires the ownership check defined in the access model.
 | PUT | /exams/{id} | I | ExamUpdate → Exam | FR-006; state/revision 409; implemented |
 | POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; immutable snapshots; implemented |
 | POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409; repeated close stable; implemented |
-| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; draft source 409; QM-014 in progress |
-| PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409 |
-| GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008 |
-| GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only |
+| POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; published/closed source only; implemented |
+| PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409; QM-015 in progress |
+| GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008; QM-015 in progress |
+| GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only; QM-015 in progress |
 | POST | /exams/{id}/attempts | S | — → Attempt (201 new / 200 active) | FR-009; quota/state 409; unassigned 404 |
 | GET | /attempts/{id} | S | — → Attempt | FR-010, FR-011; reconcile expiry |
 | PUT | /attempts/{id}/answers/{questionId} | S | SaveAnswer → SavedAnswer | FR-010; expiry/revision/state 409 |

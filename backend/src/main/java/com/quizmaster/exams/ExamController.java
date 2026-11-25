@@ -58,4 +58,10 @@ public class ExamController {
     Exam close(@PathVariable UUID id, @AuthenticationPrincipal AccountView actor) {
         return service.close(id, actor.id());
     }
+
+    @PostMapping("/{id}/versions")
+    ResponseEntity<Exam> createSuccessor(@PathVariable UUID id, @AuthenticationPrincipal AccountView actor) {
+        var version = service.createSuccessor(id, actor.id());
+        return ResponseEntity.created(URI.create("/api/v1/exams/" + version.id())).body(version);
+    }
 }

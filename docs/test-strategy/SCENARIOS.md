@@ -123,6 +123,13 @@ QM-012 separately verifies PUBLISHED→edit 409. Maven `verify` on 2026-11-25:
 6 unit + 34 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips;
 PostgreSQL 18.7, Flyway V1–V4.
 
+QM-014 version-copy coverage also exercises the version lifecycle associated with
+TC-016: `IdentityIT.successorVersionCopiesPublishedSnapshotAndAllocatesUniqueNumbersConcurrently`
+verifies draft-source rejection, snapshot/settings copy, source bank edit
+isolation, source immutability, owner/role boundaries, and two concurrent creates
+assigned distinct next version numbers (3 and 4). Same final Maven run: 6 unit +
+35 HTTP/PostgreSQL integration tests PASS; Flyway V1–V4 on PostgreSQL 18.7.
+
 ## Execution strategy
 
 1. Unit: score math, validators and Clock edge cases; no network or sleeps.

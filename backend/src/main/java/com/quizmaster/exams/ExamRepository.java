@@ -37,19 +37,39 @@ public class ExamRepository {
     }
 
     void insertDraft(Exam exam, Instant now) {
+        insertVersion(exam, now);
+        insertDraftQuestionIds(exam.id(), exam.questionIds());
+    }
+
+    void insertSuccessor(Exam exam, Instant now) {
+        insertDraft(exam, now);
+        insertCopiedSnapshots(exam.id(), exam.questions());
+    }
+
+    private void insertVersion(Exam exam, Instant now) {
         jdbc.sql("INSERT INTO exam_version (id,family_id,version_number,owner_id,title,state,duration_seconds,attempt_limit,passing_threshold,shuffle,revision,created_at,updated_at,published_at) "
-                        + "VALUES (:id,:family,1,:owner,:title,'DRAFT',:duration,:attempts,:threshold,:shuffle,0,:created,:updated,NULL)")
-                .param("id", exam.id()).param("family", exam.familyId()).param("owner", exam.ownerId())
+                        + "VALUES (:id,:family,:version,:owner,:title,'DRAFT',:duration,:attempts,:threshold,:shuffle,0,:created,:updated,NULL)")
+                .param("id", exam.id()).param("family", exam.familyId()).param("version", exam.versionNumber()).param("owner", exam.ownerId())
                 .param("title", exam.title()).param("duration", exam.durationSeconds()).param("attempts", exam.attemptLimit())
                 .param("threshold", exam.passingThreshold()).param("shuffle", exam.shuffle())
                 .param("created", Timestamp.from(now)).param("updated", Timestamp.from(now)).update();
-        insertDraftQuestionIds(exam.id(), exam.questionIds());
     }
 
     Optional<Exam> byId(UUID id, UUID ownerId) {
         var header = jdbc.sql(HEADER_SQL + " WHERE id=:id AND owner_id=:owner")
                 .param("id", id).param("owner", ownerId).query(HEADER).optional();
         return header.map(this::hydrate);
+    }
+
+    Optional<Exam> lockById(UUID id, UUID ownerId) {
+        var header = jdbc.sql(HEADER_SQL + " WHERE id=:id AND owner_id=:owner FOR UPDATE")
+                .param("id", id).param("owner", ownerId).query(HEADER).optional();
+        return header.map(this::hydrate);
+    }
+
+    int nextVersionNumber(UUID familyId) {
+        return jdbc.sql("SELECT COALESCE(max(version_number),0)+1 FROM exam_version WHERE family_id=:family")
+                .param("family", familyId).query(Integer.class).single();
     }
 
     boolean owned(UUID id, UUID ownerId) {
@@ -67,7 +87,8 @@ public class ExamRepository {
         return jdbc.sql("SELECT count(*) FROM exam_version WHERE owner_id=:owner").param("owner", ownerId).query(Long.class).single();
     }
 
-    boolean updateDraft(UUID id, UUID ownerId, ExamRequests.Update request, Instant now) {
+    boolean updateDraft(UUID id, UUID ownerId, ExamRequests.Update request, List<com.quizmaster.questions.Question> selected, Instant now) {
+        boolean preserveSnapshot = hasSnapshots(id);
         int changed = jdbc.sql("UPDATE exam_version SET title=:title,duration_seconds=:duration,attempt_limit=:attempts,passing_threshold=:threshold,shuffle=:shuffle,revision=revision+1,updated_at=:updated "
                         + "WHERE id=:id AND owner_id=:owner AND state='DRAFT' AND revision=:revision")
                 .param("title", request.title()).param("duration", request.durationSeconds().intValueExact()).param("attempts", request.attemptLimit().intValueExact())
@@ -76,6 +97,7 @@ public class ExamRepository {
         if (changed == 0) return false;
         jdbc.sql("DELETE FROM exam_draft_question WHERE exam_version_id=:id").param("id", id).update();
         insertDraftQuestionIds(id, request.questionIds());
+        if (preserveSnapshot) replaceSnapshots(id, selected);
         return true;
     }
 
@@ -84,11 +106,28 @@ public class ExamRepository {
                         + "WHERE id=:id AND owner_id=:owner AND state='DRAFT' AND revision=:revision")
                 .param("now", Timestamp.from(now)).param("id", id).param("owner", ownerId).param("revision", revision).update();
         if (changed == 0) return false;
-        int questionPosition = 0;
+        if (!hasSnapshots(id)) insertSnapshots(id, questions);
+        return true;
+    }
+
+    private boolean hasSnapshots(UUID examId) {
+        return jdbc.sql("SELECT EXISTS (SELECT 1 FROM exam_question_snapshot WHERE exam_version_id=:id)")
+                .param("id", examId).query(Boolean.class).single();
+    }
+
+    private void replaceSnapshots(UUID examId, List<com.quizmaster.questions.Question> questions) {
+        jdbc.sql("DELETE FROM exam_option_snapshot WHERE exam_question_id IN "
+                + "(SELECT id FROM exam_question_snapshot WHERE exam_version_id=:id)").param("id", examId).update();
+        jdbc.sql("DELETE FROM exam_question_snapshot WHERE exam_version_id=:id").param("id", examId).update();
+        insertSnapshots(examId, questions);
+    }
+
+    private void insertSnapshots(UUID examId, List<com.quizmaster.questions.Question> questions) {
+        int position = 0;
         for (var question : questions) {
             UUID snapshotId = UUID.randomUUID();
             jdbc.sql("INSERT INTO exam_question_snapshot (id,exam_version_id,source_question_id,position,prompt,difficulty) VALUES (:id,:exam,:source,:position,:prompt,:difficulty)")
-                    .param("id", snapshotId).param("exam", id).param("source", question.id()).param("position", questionPosition++)
+                    .param("id", snapshotId).param("exam", examId).param("source", question.id()).param("position", position++)
                     .param("prompt", question.prompt()).param("difficulty", question.difficulty() == null ? null : question.difficulty().name()).update();
             int optionPosition = 0;
             for (var option : question.options()) {
@@ -98,7 +137,23 @@ public class ExamRepository {
                         .param("correct", option.correct()).update();
             }
         }
-        return true;
+    }
+
+    private void insertCopiedSnapshots(UUID examId, List<Exam.QuestionSnapshot> snapshots) {
+        int position = 0;
+        for (var question : snapshots) {
+            UUID snapshotId = UUID.randomUUID();
+            jdbc.sql("INSERT INTO exam_question_snapshot (id,exam_version_id,source_question_id,position,prompt,difficulty) VALUES (:id,:exam,:source,:position,:prompt,:difficulty)")
+                    .param("id", snapshotId).param("exam", examId).param("source", question.sourceQuestionId()).param("position", position++)
+                    .param("prompt", question.prompt()).param("difficulty", question.difficulty()).update();
+            int optionPosition = 0;
+            for (var option : question.options()) {
+                jdbc.sql("INSERT INTO exam_option_snapshot (id,exam_question_id,source_option_id,position,label,option_text,correct) VALUES (:id,:question,:source,:position,:label,:text,:correct)")
+                        .param("id", UUID.randomUUID()).param("question", snapshotId).param("source", option.id())
+                        .param("position", optionPosition++).param("label", option.label()).param("text", option.text())
+                        .param("correct", option.correct()).update();
+            }
+        }
     }
 
     boolean close(UUID id, UUID ownerId, Instant now) {
@@ -118,7 +173,7 @@ public class ExamRepository {
         var ids = header.state() == ExamState.DRAFT
                 ? jdbc.sql("SELECT question_id FROM exam_draft_question WHERE exam_version_id=:id ORDER BY position").param("id", header.id()).query(UUID.class).list()
                 : jdbc.sql("SELECT source_question_id FROM exam_question_snapshot WHERE exam_version_id=:id ORDER BY position").param("id", header.id()).query(UUID.class).list();
-        var snapshots = header.state() == ExamState.DRAFT ? List.<Exam.QuestionSnapshot>of() : snapshots(header.id());
+        var snapshots = snapshots(header.id());
         return new Exam(header.id(), header.familyId(), header.versionNumber(), header.ownerId(), header.title(), header.state(),
                 header.durationSeconds(), header.attemptLimit(), header.passingThreshold(), header.shuffle(), header.revision(), ids, snapshots);
     }
