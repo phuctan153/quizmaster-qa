@@ -57,7 +57,9 @@ applies at publish. Bank QUESTION_OPTION rows are separate from EXAM_OPTION rows
 
 Implemented schema note: Flyway V5 creates `exam_assignment` with a unique
 `(exam_version_id, student_id)` key and a student/date index. Its row is reserved
-for attempt allocation; QM-016 adds the transactional locking behavior.
+for attempt allocation. Flyway V6 creates attempt, persisted attempt question
+order, answer, and unique result tables. QM-016 implements version→assignment→attempt
+locking for start/resume and expiry reconciliation.
 
 Foreign keys restrict deletion of referenced records. V1 uses account activation,
 exam close and bank retention rather than cascading deletion of attempt history.

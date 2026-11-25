@@ -5,7 +5,7 @@
 GitHub remote: [phuctan153/quizmaster-qa](https://github.com/phuctan153/quizmaster-qa).
 Connected as `origin`; remote synchronization does not imply a deployment.
 
-> **Current status:** Auth/account API, React UI, taxonomy, instructor question-bank CRUD, atomic CSV import, exam lifecycle and assignments are verified. The latest backend run passed 6 unit and 36 HTTP/PostgreSQL integration tests against PostgreSQL 18.7 on 2026-11-25. QM-016 atomic attempt start is in progress; answer saving, results and CI remain unimplemented.
+> **Current status:** Auth/account API, React UI, taxonomy, instructor question-bank CRUD, atomic CSV import, exam lifecycle, assignments and atomic attempt start/read are verified. The latest backend run passed 6 unit and 38 HTTP/PostgreSQL integration tests against PostgreSQL 18.7 on 2026-11-25. Answer saving, submission/result views and CI remain unimplemented.
 
 ## Purpose
 
@@ -59,7 +59,7 @@ Implemented: POST `/api/v1/auth/login`, GET `/api/v1/auth/me`, admin POST/GET
 `/api/v1/users`, PATCH `/api/v1/users/{id}/status`. Current account state is checked
 on every token use. Passwords use salted PBKDF2. No default credentials are shipped.
 Admin can create categories and subjects; Admin and Instructor can list them.
-Instructor question-bank create/list/read/update and CSV import routes are implemented and verified. Exam draft, publish, close, immutable snapshots, successor versions and assignment routes are implemented; atomic attempt start is in progress.
+Instructor question-bank create/list/read/update and CSV import routes are implemented and verified. Exam draft, publish, close, immutable snapshots, successor versions, assignment routes, and attempt start/read are implemented and verified; answer saving is next.
 React UI supports sign-in, profile, admin account creation/list/status, role denial
 and logout/401 handling. Token stays in memory; reload requires sign-in again.
 Audit events and the other designed routes remain planned. See `TASKS.md` and the

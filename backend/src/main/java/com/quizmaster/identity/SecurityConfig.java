@@ -93,6 +93,8 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/categories", "/api/v1/subjects").hasAnyRole("ADMIN", "INSTRUCTOR")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/students").hasRole("INSTRUCTOR")
                         .requestMatchers("/api/v1/assignments").hasRole("STUDENT")
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/exams/*/attempts").hasRole("STUDENT")
+                        .requestMatchers("/api/v1/attempts/**").hasRole("STUDENT")
                         .requestMatchers("/api/v1/questions/**").hasRole("INSTRUCTOR")
                         .requestMatchers("/api/v1/exams", "/api/v1/exams/**").hasRole("INSTRUCTOR")
                         .anyRequest().authenticated())

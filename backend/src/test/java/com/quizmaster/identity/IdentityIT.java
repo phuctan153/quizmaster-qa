@@ -73,7 +73,7 @@ class IdentityIT {
     @BeforeEach
     void fixtures() {
         // This connection belongs exclusively to the disposable Testcontainers DB.
-        jdbc.execute("TRUNCATE TABLE exam_assignment, exam_option_snapshot, exam_question_snapshot, exam_draft_question, exam_version, question_option, question, account");
+        jdbc.execute("TRUNCATE TABLE exam_result, answer, attempt_question, attempt, exam_assignment, exam_option_snapshot, exam_question_snapshot, exam_draft_question, exam_version, question_option, question, account");
         password = UUID.randomUUID().toString();
         admin = seed("admin@example.test", Role.ADMIN, true);
         student = seed("student@example.test", Role.STUDENT, true);
@@ -796,6 +796,153 @@ class IdentityIT {
         assertThat(request(HttpMethod.POST, "/exams/" + draftId + "/close", instructorToken, null).getStatusCode().value()).isEqualTo(200);
         assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + secondStudent.id(), instructorToken, null)
                 .getStatusCode().value()).isEqualTo(409);
+    }
+
+    @Test
+    void attemptStartResumesExpiresAndEnforcesQuotaAtomically() throws Exception {
+        var adminToken = token(admin);
+        var instructor = seed("attempt-owner@example.test", Role.INSTRUCTOR, true);
+        var instructorToken = token(instructor);
+        var otherStudent = seed("attempt-other@example.test", Role.STUDENT, true);
+        var subjectId = createSubject(adminToken);
+        var questionId = createQuestion(instructorToken, subjectId, "Attempt question");
+        var draft = request(HttpMethod.POST, "/exams", instructorToken,
+                examBodyWith(examBody(List.of(questionId), "Attempt test"), "attemptLimit", 2));
+        var examId = draft.getBody().get("id").asText();
+        assertThat(request(HttpMethod.POST, "/exams/" + examId + "/publish", instructorToken,
+                Map.of("revision", 0)).getStatusCode().value()).isEqualTo(200);
+        assertThat(request(HttpMethod.PUT, "/exams/" + examId + "/assignments/" + student.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(201);
+        assertThat(request(HttpMethod.PUT, "/exams/" + examId + "/assignments/" + otherStudent.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(201);
+
+        var startPath = "/exams/" + examId + "/attempts";
+        var studentToken = token(student);
+        var gate = new CountDownLatch(1);
+        ResponseEntity<JsonNode> first;
+        ResponseEntity<JsonNode> second;
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, startPath, studentToken, null);
+            })).toList();
+            gate.countDown();
+            first = jobs.get(0).get(15, TimeUnit.SECONDS);
+            second = jobs.get(1).get(15, TimeUnit.SECONDS);
+        }
+        assertThat(List.of(first.getStatusCode().value(), second.getStatusCode().value())).containsExactlyInAnyOrder(200, 201);
+        assertThat(first.getBody().get("id").asText()).isEqualTo(second.getBody().get("id").asText());
+        var attemptId = first.getBody().get("id").asText();
+        assertThat(first.getBody().get("attemptNumber").asInt()).isEqualTo(1);
+        assertThat(first.getBody().get("state").asText()).isEqualTo("IN_PROGRESS");
+        assertThat(first.getBody().get("deadline").asText()).isNotBlank();
+        assertThat(first.getBody().get("questions")).hasSize(1);
+        assertThat(first.getBody().get("questions").get(0).has("correct")).isFalse();
+        assertThat(first.getBody().get("questions").get(0).get("options").get(0).has("correct")).isFalse();
+        assertThat(jdbc.queryForObject("SELECT allocated_count FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                Integer.class, UUID.fromString(examId), student.id())).isEqualTo(1);
+        assertThat(request(HttpMethod.POST, startPath, token(otherStudent), null).getStatusCode().value()).isEqualTo(201);
+        assertThat(request(HttpMethod.POST, startPath, instructorToken, null).getStatusCode().value()).isEqualTo(403);
+        assertThat(request(HttpMethod.GET, "/attempts/" + attemptId, token(otherStudent), null).getStatusCode().value()).isEqualTo(404);
+        assertThat(request(HttpMethod.GET, "/attempts/" + attemptId, instructorToken, null).getStatusCode().value()).isEqualTo(403);
+        assertThat(request(HttpMethod.POST, "/exams/" + UUID.randomUUID() + "/attempts", studentToken, null)
+                .getStatusCode().value()).isEqualTo(404);
+
+        jdbc.update("UPDATE attempt SET started_at=?,deadline=? WHERE id=?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(3602)), java.sql.Timestamp.from(Instant.now().minusSeconds(2)),
+                UUID.fromString(attemptId));
+        var expired = request(HttpMethod.GET, "/attempts/" + attemptId, studentToken, null);
+        assertThat(expired.getStatusCode().value()).isEqualTo(200);
+        assertThat(expired.getBody().get("state").asText()).isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_result WHERE attempt_id=?", Integer.class, UUID.fromString(attemptId))).isEqualTo(1);
+        var secondAttempt = request(HttpMethod.POST, startPath, studentToken, null);
+        assertThat(secondAttempt.getStatusCode().value()).isEqualTo(201);
+        assertThat(secondAttempt.getBody().get("attemptNumber").asInt()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT allocated_count FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                Integer.class, UUID.fromString(examId), student.id())).isEqualTo(2);
+        jdbc.update("UPDATE attempt SET started_at=?,deadline=? WHERE id=?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(3602)), java.sql.Timestamp.from(Instant.now().minusSeconds(2)),
+                UUID.fromString(secondAttempt.getBody().get("id").asText()));
+        var exhausted = request(HttpMethod.POST, startPath, studentToken, null);
+        assertThat(exhausted.getStatusCode().value()).isEqualTo(409);
+        assertThat(exhausted.getBody().get("code").asText()).isEqualTo("ATTEMPT_LIMIT");
+        assertThat(jdbc.queryForObject("SELECT allocated_count FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                Integer.class, UUID.fromString(examId), student.id())).isEqualTo(2);
+        var secondAttemptId = UUID.fromString(secondAttempt.getBody().get("id").asText());
+        assertThat(jdbc.queryForObject("SELECT state FROM attempt WHERE id=?", String.class, secondAttemptId)).isEqualTo("EXPIRED");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_result WHERE attempt_id=?", Integer.class, secondAttemptId)).isEqualTo(1);
+
+        var closedExam = request(HttpMethod.POST, "/exams", instructorToken, examBody(List.of(questionId), "Closed before start"));
+        var closedId = closedExam.getBody().get("id").asText();
+        assertThat(request(HttpMethod.POST, "/exams/" + closedId + "/publish", instructorToken,
+                Map.of("revision", 0)).getStatusCode().value()).isEqualTo(200);
+        assertThat(request(HttpMethod.PUT, "/exams/" + closedId + "/assignments/" + student.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(201);
+        var gateCloseStart = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var startJob = pool.submit(() -> {
+                if (!gateCloseStart.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, "/exams/" + closedId + "/attempts", studentToken, null);
+            });
+            var closeJob = pool.submit(() -> {
+                if (!gateCloseStart.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, "/exams/" + closedId + "/close", instructorToken, null);
+            });
+            gateCloseStart.countDown();
+            var startRace = startJob.get(15, TimeUnit.SECONDS);
+            var closeRace = closeJob.get(15, TimeUnit.SECONDS);
+            assertThat(closeRace.getStatusCode().value()).isEqualTo(200);
+            assertThat(startRace.getStatusCode().value()).isIn(201, 409);
+            int expectedAttempts = startRace.getStatusCode().value() == 201 ? 1 : 0;
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM attempt WHERE exam_version_id=? AND student_id=?",
+                    Integer.class, UUID.fromString(closedId), student.id())).isEqualTo(expectedAttempts);
+            assertThat(jdbc.queryForObject("SELECT state FROM exam_version WHERE id=?", String.class,
+                    UUID.fromString(closedId))).isEqualTo("CLOSED");
+        }
+        var repeatAfterRace = request(HttpMethod.POST, "/exams/" + closedId + "/attempts", studentToken, null);
+        assertThat(repeatAfterRace.getStatusCode().value()).isIn(200, 409);
+    }
+
+    @Test
+    void attemptQuotaBoundariesOneAndThreeAreEnforced() {
+        var instructor = seed("attempt-boundary-owner@example.test", Role.INSTRUCTOR, true);
+        var instructorToken = token(instructor);
+        var subjectId = createSubject(token(admin));
+        var questionId = createQuestion(instructorToken, subjectId, "Quota boundary question");
+        var studentToken = token(student);
+        for (int limit : List.of(1, 3)) {
+            var draft = request(HttpMethod.POST, "/exams", instructorToken,
+                    examBodyWith(examBody(List.of(questionId), "Attempt limit " + limit), "attemptLimit", limit));
+            var examId = draft.getBody().get("id").asText();
+            assertThat(request(HttpMethod.POST, "/exams/" + examId + "/publish", instructorToken,
+                    Map.of("revision", 0)).getStatusCode().value()).isEqualTo(200);
+            assertThat(request(HttpMethod.PUT, "/exams/" + examId + "/assignments/" + student.id(), instructorToken, null)
+                    .getStatusCode().value()).isEqualTo(201);
+            var startPath = "/exams/" + examId + "/attempts";
+            ResponseEntity<JsonNode> start = request(HttpMethod.POST, startPath, studentToken, null);
+            for (int number = 1; number <= limit; number++) {
+                assertThat(start.getStatusCode().value()).isEqualTo(201);
+                assertThat(start.getBody().get("attemptNumber").asInt()).isEqualTo(number);
+                var attemptId = UUID.fromString(start.getBody().get("id").asText());
+                if (number == 1 && limit > 1) {
+                    var finalizedAt = Instant.now();
+                    jdbc.update("UPDATE attempt SET state='SUBMITTED',finalized_at=? WHERE id=?",
+                            java.sql.Timestamp.from(finalizedAt), attemptId);
+                    jdbc.update("INSERT INTO exam_result(attempt_id,correct_count,total_count,score,passed,finalized_at,reason) VALUES (?,0,1,0,false,?,'SUBMITTED')",
+                            attemptId, java.sql.Timestamp.from(finalizedAt));
+                } else {
+                    jdbc.update("UPDATE attempt SET started_at=?,deadline=? WHERE id=?",
+                            java.sql.Timestamp.from(Instant.now().minusSeconds(3602)), java.sql.Timestamp.from(Instant.now().minusSeconds(2)), attemptId);
+                }
+                start = request(HttpMethod.POST, startPath, studentToken, null);
+            }
+            assertThat(start.getStatusCode().value()).isEqualTo(409);
+            assertThat(start.getBody().get("code").asText()).isEqualTo("ATTEMPT_LIMIT");
+            assertThat(jdbc.queryForObject("SELECT allocated_count FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                    Integer.class, UUID.fromString(examId), student.id())).isEqualTo(limit);
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_result r JOIN attempt a ON a.id=r.attempt_id WHERE a.exam_version_id=?",
+                    Integer.class, UUID.fromString(examId))).isEqualTo(limit);
+        }
     }
 
     private String createSubject(String adminToken) {

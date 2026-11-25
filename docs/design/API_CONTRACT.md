@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, exam lifecycle and assignment routes are implemented. Attempt start is in progress; remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, exam lifecycle, assignment routes and attempt start/read are implemented. Answer save, submit, results and remaining routes are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -62,8 +62,8 @@ also requires the ownership check defined in the access model.
 | PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409; implemented |
 | GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008; owner only; implemented |
 | GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only; implemented |
-| POST | /exams/{id}/attempts | S | — → Attempt (201 new / 200 active) | FR-009; quota/state 409; unassigned 404 |
-| GET | /attempts/{id} | S | — → Attempt | FR-010, FR-011; reconcile expiry |
+| POST | /exams/{id}/attempts | S | — → Attempt (201 new / 200 active) | FR-009; quota/state 409; unassigned 404; implemented |
+| GET | /attempts/{id} | S | — → Attempt | FR-010, FR-011; owner only; reconciles expiry; implemented |
 | PUT | /attempts/{id}/answers/{questionId} | S | SaveAnswer → SavedAnswer | FR-010; expiry/revision/state 409 |
 | POST | /attempts/{id}/submit | S | — → Result | FR-011, FR-012; retries 200 same result |
 | GET | /attempts/{id}/result | S,I | — → Result | FR-013; still active 409 |

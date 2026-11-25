@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-016 (IN_PROGRESS)** — atomic attempt start
-- Last verified task: **QM-015**
+- Current task: **QM-017 (READY)** — save attempt answers
+- Last verified task: **QM-016**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, exam lifecycle and assignments verified; attempt start is in progress; answer/submission/results and CI pending**
+- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, exam lifecycle, assignments and atomic attempt start/read verified; answer saving, submission/results and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -31,8 +31,9 @@
 | QM-013 | Close published exams | P1 | DONE | QM-012 | Owner-only close; draft rejected; repeat/concurrent close stable with one revision increment; role/foreign denials; 6 unit + 34 HTTP/PostgreSQL tests PASS; TC-016 PASS |
 | QM-014 | Successor exam versions | P1 | DONE | QM-012, QM-013 | Published/closed source copies to editable draft with immutable snapshot/settings; owner denial; source bank edits isolated; concurrent version numbers unique; 6 unit + 35 HTTP/PostgreSQL tests PASS |
 | QM-015 | Exam assignment API | P1 | DONE | QM-014 | V5 assignment table and four list/create routes; unique/idempotent assignment, active-student validation, owner/RBAC filters; 6 unit + 36 HTTP/PostgreSQL tests PASS; TC-017 PASS |
-| QM-016 | Atomic attempt start | P1 | IN_PROGRESS | QM-015 | Student starts assigned published exam within configured quota; lock version then assignment; serialize with close; unique active attempt and contiguous numbering; PostgreSQL concurrency evidence |
-| QM-017+ | Answers, finalization/scoring, results, notifications and CI | P1 | BACKLOG | QM-016 | Split into requirement-first executable slices |
+| QM-016 | Atomic attempt start | P1 | DONE | QM-015 | V6 attempt/result schema; student-only start/read; version→assignment→attempt locks; 6 unit + 38 HTTP/PostgreSQL tests PASS; TC-018..020 PASS |
+| QM-017 | Save attempt answers | P1 | READY | QM-016 | Persist only snapshot question/option selections; reject foreign/unknown/stale writes; backend deadline equality and concurrent revision checks; TC-021..025 |
+| QM-018+ | Finalization/scoring, result views, notifications and CI | P1 | BACKLOG | QM-017 | Split into requirement-first executable slices |
 
 ### QM-008 — Verified first UI slice
 - Priority: P1; dependencies: QM-007.
@@ -114,13 +115,23 @@
 - Next: QM-016 atomic attempt start.
 
 ### QM-016 — Atomic attempt start
-- Status: IN_PROGRESS
+- Status: DONE
 - Priority: P1; dependencies: QM-015; FR-009, TC-018..020.
 - Goal: let a Student begin an assigned, eligible published exam while enforcing attempt limits and one active attempt per assignment.
 - Acceptance criteria: assigned active Student only; reject closed/unassigned/exhausted states; allocate attempt numbers without gaps on failed starts; return existing active attempt idempotently; serialize competing starts and close/start races using the documented version→assignment lock order.
 - Verification: real PostgreSQL/HTTP tests for limits 1 and 3, repeated active start, submitted/expired predecessors, barriers and close/start race; docs checker and diff review.
-- Evidence: API contract defines `POST /exams/{id}/attempts`; implementation pending.
-- Next: inspect existing attempt schema and approved DEC-06/07, then implement persistence and start route.
+- Evidence: Flyway V6; `AttemptController`, `AttemptService`, `AttemptRepository`; `IdentityIT.attemptStartResumesExpiresAndEnforcesQuotaAtomically`; `IdentityIT.attemptQuotaBoundariesOneAndThreeAreEnforced`; TC-018..020 PASS.
+- Verification: `mvn -f backend/pom.xml "-Djavax.net.ssl.trustStoreType=Windows-ROOT" "-Djavax.net.ssl.trustStore=NONE" -B verify` → BUILD SUCCESS; 6 unit + 38 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips; PostgreSQL 18.7, Flyway V1–V6. Docs and whitespace checks PASS.
+- Next: QM-017 save attempt answers.
+
+### QM-017 — Save attempt answers
+- Status: READY
+- Priority: P1; dependencies: QM-016; FR-010, TC-021..025.
+- Goal: let a Student save and resume answers for only the immutable question/option snapshots in their own attempt.
+- Acceptance criteria: require active attempt and `now < deadline`; validate selected option membership; revision 0 on first write and atomic increment thereafter; stale/concurrent revisions conflict without lost updates; reject foreign resources uniformly; never return answer keys.
+- Verification: real PostgreSQL/HTTP tests for authorization, wrong question/option, clear answer, revision race, exact deadline and stable shuffled order.
+- Evidence: V6 answer schema and `GET /attempts/{id}` view are implemented; answer mutation route remains pending.
+- Next: implement answer save endpoint and boundary/concurrency coverage.
 
 ## Codex task creation rules
 

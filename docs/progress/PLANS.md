@@ -106,4 +106,12 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Dependencies / approved decisions: QM-015, DEC-06/07, ACCESS_AND_STATES start invariants.
 - Verification: real PostgreSQL/HTTP tests for assigned access, limits, idempotency, expired/submitted predecessors and close/start concurrency.
 - Risk / rollback: additive migration; transaction locks and uniqueness constraints provide defense in depth.
-- Status: IN_PROGRESS on 2026-11-25.
+- Status: COMPLETE on 2026-11-25; 6 unit + 38 HTTP/PostgreSQL integration tests PASS, including quota boundaries, expiry, resume and start/close concurrency.
+
+### PLAN-011 — Save attempt answers
+- Goal: implement FR-010 answer read/write behavior for an active Student attempt.
+- Scope: owner-scoped attempt read, snapshot-only question/options, validated answer selection/clear, optimistic answer revision and server deadline checks.
+- Dependencies / approved decisions: QM-016, DEC-08/10 and ACCESS_AND_STATES attempt invariants.
+- Verification: PostgreSQL/HTTP ownership, snapshot membership, option membership, stale revision races, exact deadline and stable order.
+- Risk / rollback: additive endpoint and answer upsert; immutable attempt membership remains fixed.
+- Status: READY on 2026-11-25.
