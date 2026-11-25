@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-009 (READY)** — taxonomy API vertical slice
+- Current task: **QM-009 (BLOCKED)** — taxonomy API vertical slice; implementation is present, PostgreSQL/HTTP verification needs Docker
 - Last verified task: **QM-008**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account API and React UI verified; examination modules and CI pending**
+- Implementation status: **Auth/account API and React UI verified; taxonomy API source and integration scenarios added, but full verification is blocked because Docker Engine is unavailable; remaining examination modules and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -24,7 +24,7 @@
 | QM-006 | QA test strategy and initial scenario catalogue | P0 | DONE | QM-002, QM-005 | 36 NOT_RUN scenarios map all 14 FRs; tools/check_docs.py PASS; no execution coverage claimed |
 | QM-007 | Backend foundation and auth vertical slice | P1 | DONE | QM-003, QM-004, QM-005 | Executable Spring Boot app, migration, 3 unit + 24 real HTTP/PostgreSQL tests PASS; see worklog and LOCAL_SETUP |
 | QM-008 | Frontend foundation and first user journey | P1 | DONE | QM-007 | React auth/Admin UI; 12 UI/client tests PASS; real browser/API/DB journey PASS; 27 backend regression tests PASS; build/audit PASS |
-| QM-009 | Categories and subjects API vertical slice | P1 | READY | QM-006, QM-007 | Four contracted taxonomy routes, migration/constraints, RBAC/validation/duplicate/parent tests against PostgreSQL; docs and regression evidence |
+| QM-009 | Categories and subjects API vertical slice | P1 | BLOCKED | QM-006, QM-007 | Four routes, migration, RBAC/validation/duplicate/parent and concurrency scenarios implemented; `mvn -f backend/pom.xml ... verify` blocked before integration tests because Docker Desktop engine pipe is unavailable. Unblock: start Docker Linux Engine and rerun verify. |
 | QM-010+ | CI, automation hardening and portfolio delivery | P1 | BACKLOG | Working slices | Stable checks, reproducible setup, honest reporting and README |
 
 ### QM-008 — Verified first UI slice
@@ -40,15 +40,15 @@
   and npm audit PASS; see worklog and UI_JOURNEY for actual execution.
 - Next: QM-009 taxonomy API, then question-bank slice; examination UI remains planned.
 
-### QM-009 — Next executable slice
+### QM-009 — Taxonomy API vertical slice
 - Priority: P1; dependencies: QM-006, QM-007; FR-003, TC-008.
 - Goal: Admin creates categories/subjects; Admin and Instructor read paginated lists.
 - Acceptance: trim names; reject blanks/overlong/normalized duplicates; enforce
   parent FK; reject Student access and non-admin writes; unknown parent 404;
   duplicate 409; strict JSON; no duplicate rows under concurrent creation.
-- Validation: real PostgreSQL migration/HTTP/DB tests; existing backend tests,
-  frontend suite, docs check and clean diff remain green.
-- Evidence: NOT_RUN; implementation has not started.
+- Validation: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify` → unit tests PASS (3); integration tests BLOCKED because Docker Engine pipe was unavailable. `python tools/check_docs.py` PASS; `git diff --check` PASS. PostgreSQL/HTTP behavior remains unverified.
+- Evidence: Integration scenarios are in `IdentityIT`; Failsafe report records the Docker environment failure under `backend/target/failsafe-reports` (generated, ignored).
+- Next: Start Docker Desktop Linux Engine, rerun Maven verify, fix any failures, then update TC-008/worklog and close QM-009 only after all acceptance checks pass.
 
 ## Codex task creation rules
 

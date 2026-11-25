@@ -39,3 +39,10 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
   browser results and fixed mobile/401 defects are recorded in UI_JOURNEY.
 - Status: COMPLETE on 2026-11-20. Bootstrap's previous NOT_RUN limitation was
   resolved for disposable standalone fixture use; persistent Compose remains NOT_RUN.
+
+### PLAN-003 — Taxonomy API vertical slice
+- Goal: deliver FR-003 and TC-008 with database-backed category/subject routes.
+- Scope: admin create category/subject; admin/instructor paginated reads; normalized
+  uniqueness, parent FK, role checks and structured conflicts. No taxonomy update/delete.
+- Verification: `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B verify`; unit tests PASS, integration tests require the Docker Linux Engine. Focused PostgreSQL/HTTP tests are required before QM-009 can be marked DONE.
+- Status: BLOCKED on 2026-11-25; migration, repository, service, controller, route security and integration scenarios added. The Testcontainers run cannot connect to Docker Desktop's Linux Engine pipe; acceptance evidence is incomplete.

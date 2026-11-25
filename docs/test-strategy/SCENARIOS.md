@@ -1,7 +1,9 @@
 # Initial Risk-Based Scenario Catalogue
 
 TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
-TC-008..034 and TC-036 are **NOT_RUN**. These are independent
+TC-008..034 and TC-036 are **NOT_RUN**. TC-008 has implementation coverage drafted,
+but its PostgreSQL/HTTP execution was blocked on 2026-11-25 because Docker Engine
+was unavailable. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -72,6 +74,13 @@ Admin create/status, inactive login denial and 401 logout against live backend/D
 12 Vitest component/client tests and successful Vite build. See UI_JOURNEY and
 WORKLOG QM-008 for commands, versions, fixes and screenshot locations. This is
 manual browser execution; no Selenium automation or CI pass is claimed.
+
+TC-008 implementation mapping (execution NOT_RUN):
+`IdentityIT.taxonomyEnforcesRolesNormalizationParentAndPagination` and
+`IdentityIT.concurrentNormalizedCategoryCreationCommitsExactlyOneRow`. The
+2026-11-25 `mvn ... verify` run passed 3 unit tests but Failsafe could not start
+the disposable PostgreSQL container because the Docker Desktop Linux Engine pipe
+was absent. This is a blocker, not a passing result.
 
 ## Execution strategy
 

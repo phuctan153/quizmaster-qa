@@ -42,6 +42,11 @@ public class ApiErrors {
         return ResponseEntity.status(415).body(new ApiError("UNSUPPORTED_MEDIA_TYPE", "Content type is not supported"));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> conflict(Exception ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("STATE_CONFLICT", "Resource conflicts with current data"));
+    }
+
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<ApiError> database(Exception ex) {
         return ResponseEntity.status(503).body(new ApiError("SERVICE_UNAVAILABLE", "Service temporarily unavailable"));

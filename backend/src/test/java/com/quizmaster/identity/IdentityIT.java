@@ -268,4 +268,65 @@ class IdentityIT {
                 "INSERT INTO account VALUES (?,?,?,?,?,now())", UUID.randomUUID(), "other@example.test", "hash", "OWNER", true))
                 .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
+
+    @Test
+    void taxonomyEnforcesRolesNormalizationParentAndPagination() {
+        var adminToken = token(admin);
+        var categoryResponse = request(HttpMethod.POST, "/categories", adminToken, Map.of("name", "  QA " + UUID.randomUUID() + "  "));
+        assertThat(categoryResponse.getStatusCode().value()).isEqualTo(201);
+        assertThat(categoryResponse.getBody().get("name").asText()).startsWith("QA ");
+        var categoryId = categoryResponse.getBody().get("id").asText();
+        var normalizedName = categoryResponse.getBody().get("name").asText();
+        assertThat(request(HttpMethod.POST, "/categories", adminToken, Map.of("name", normalizedName.toUpperCase())).getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.POST, "/categories", adminToken, Map.of("name", " ")).getStatusCode().value()).isEqualTo(400);
+        assertThat(request(HttpMethod.POST, "/categories", adminToken, Map.of("name", "x".repeat(121))).getStatusCode().value()).isEqualTo(400);
+
+        var studentToken = token(student);
+        var instructor = seed("taxonomy-instructor@example.test", Role.INSTRUCTOR, true);
+        var instructorToken = token(instructor);
+        for (String bearer : List.of(studentToken, instructorToken)) {
+            assertThat(request(HttpMethod.POST, "/categories", bearer, Map.of("name", "denied")).getStatusCode().value()).isEqualTo(403);
+            assertThat(request(HttpMethod.POST, "/subjects", bearer,
+                    Map.of("categoryId", categoryId, "name", "denied")).getStatusCode().value()).isEqualTo(403);
+        }
+        assertThat(request(HttpMethod.GET, "/categories", studentToken, null).getStatusCode().value()).isEqualTo(403);
+        for (String bearer : List.of(adminToken, instructorToken)) {
+            assertThat(request(HttpMethod.GET, "/categories", bearer, null).getStatusCode().value()).isEqualTo(200);
+            assertThat(request(HttpMethod.GET, "/subjects", bearer, null).getStatusCode().value()).isEqualTo(200);
+        }
+
+        assertThat(request(HttpMethod.POST, "/subjects", adminToken,
+                Map.of("categoryId", UUID.randomUUID(), "name", "unknown-parent")).getStatusCode().value()).isEqualTo(404);
+        var subjectBody = Map.of("categoryId", categoryId, "name", "  Testing " + UUID.randomUUID() + "  ");
+        var subjectResponse = request(HttpMethod.POST, "/subjects", adminToken, subjectBody);
+        assertThat(subjectResponse.getStatusCode().value()).isEqualTo(201);
+        assertThat(subjectResponse.getBody().get("name").asText()).startsWith("Testing ");
+        assertThat(request(HttpMethod.POST, "/subjects", adminToken,
+                Map.of("categoryId", categoryId, "name", subjectResponse.getBody().get("name").asText().toUpperCase())).getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.GET, "/subjects?categoryId=" + UUID.randomUUID(), adminToken, null).getStatusCode().value()).isEqualTo(404);
+        for (var path : List.of("/categories?page=-1", "/categories?size=0", "/subjects?size=101", "/subjects?page=text")) {
+            assertThat(request(HttpMethod.GET, path, adminToken, null).getStatusCode().value()).isEqualTo(400);
+        }
+        var filtered = request(HttpMethod.GET, "/subjects?categoryId=" + categoryId + "&size=1", adminToken, null).getBody();
+        assertThat(filtered.get("items").size()).isEqualTo(1);
+        assertThat(filtered.get("total").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentNormalizedCategoryCreationCommitsExactlyOneRow() throws Exception {
+        var bearer = token(admin);
+        var name = "concurrent " + UUID.randomUUID();
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.POST, "/categories", bearer,
+                        Map.of("name", i == 0 ? name : name.toUpperCase())).getStatusCode().value();
+            })).toList();
+            gate.countDown();
+            assertThat(List.of(jobs.get(0).get(15, TimeUnit.SECONDS), jobs.get(1).get(15, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(201, 409);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM category WHERE normalized_name = ?", Integer.class, name)).isEqualTo(1);
+    }
 }

@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline, not implemented endpoints. Base path `/api/v1`.
+Status: design baseline; auth/account routes and the four taxonomy routes are implemented. Remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -17,7 +17,7 @@ All endpoints require bearer JWT except login. No implicit role hierarchy.
   protected payload validation. Protected 403 precedes ownership lookup.
 - Error JSON: `{"code":"VALIDATION_ERROR","message":"Request validation failed",
   "fieldErrors":[{"field":"email","message":"must be valid"}]}`. Stable codes
-  include UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, DUPLICATE_EMAIL, STATE_CONFLICT,
+  include UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, DUPLICATE_EMAIL, DUPLICATE_NAME, STATE_CONFLICT,
   ATTEMPT_LIMIT, REVISION_CONFLICT, ATTEMPT_EXPIRED, VALIDATION_ERROR,
   UNSUPPORTED_MEDIA_TYPE, PAYLOAD_TOO_LARGE and SERVICE_UNAVAILABLE.
   Messages contain no submitted secrets; fieldErrors defaults to an empty array.
@@ -43,10 +43,10 @@ also requires the ownership check defined in the access model.
 | GET | /users | A | page,size → Page<Account> | FR-002 |
 | PATCH | /users/{id}/status | A | AccountStatus → Account | FR-002 |
 | GET | /students | I | page,size → Page<StudentSummary> | FR-008; active students only |
-| GET | /categories | A,I | page,size → Page<Category> | FR-003 |
-| POST | /categories | A | Name → Category (201) | FR-003; duplicate 409 |
-| GET | /subjects | A,I | page,size,categoryId? → Page<Subject> | FR-003 |
-| POST | /subjects | A | SubjectInput → Subject (201) | FR-003; parent 404/duplicate 409 |
+| GET | /categories | A,I | page,size → Page<Category> | FR-003; implemented |
+| POST | /categories | A | Name → Category (201) | FR-003; duplicate 409 DUPLICATE_NAME; implemented |
+| GET | /subjects | A,I | page,size,categoryId? → Page<Subject> | FR-003; implemented |
+| POST | /subjects | A | SubjectInput → Subject (201) | FR-003; parent 404/duplicate 409 DUPLICATE_NAME; implemented |
 | GET | /questions | I | page,size,subjectId? → Page<Question> | FR-004; own only |
 | POST | /questions | I | QuestionInput → Question (201) | FR-004 |
 | GET | /questions/{id} | I | — → Question | FR-004 |

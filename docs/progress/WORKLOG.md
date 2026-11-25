@@ -203,3 +203,31 @@
   Next implementation task stays QM-009 READY (taxonomy API). No deployment made.
 - Resume: `git status --short --branch`; read TASKS/QM-009; reproduce checks using
   the commands above. GitHub source: https://github.com/phuctan153/quizmaster-qa.
+
+### 2026-11-25 — QM-009 — implementation complete; verification BLOCKED
+- Added PostgreSQL migration, normalized category/subject storage, paginated reads,
+  Admin-only writes, Admin/Instructor reads, parent validation, duplicate conflict
+  mapping and API routes. Added real HTTP/PostgreSQL integration scenarios for
+  role denial, name normalization/validation, duplicate conflicts, parent 404,
+  filtering/pagination and concurrent duplicate creation.
+- Verification command: `mvn -f backend/pom.xml
+  -Djavax.net.ssl.trustStoreType=Windows-ROOT -Djavax.net.ssl.trustStore=NONE -B
+  verify`. Test compilation completed; 3 unit tests PASS. Failsafe integration
+  setup ERROR before executing IdentityIT because Testcontainers could not locate
+  a Docker environment. `docker info` confirmed that
+  `npipe:////./pipe/dockerDesktopLinuxEngine` does not exist. `docker desktop
+  start` did not make the engine available. PostgreSQL/HTTP results are NOT_RUN;
+  this is not a pass and QM-009 remains BLOCKED.
+- `mvn -f backend/pom.xml -Djavax.net.ssl.trustStoreType=Windows-ROOT
+  -Djavax.net.ssl.trustStore=NONE -B test` → BUILD SUCCESS; test sources compile
+  and 3 unit tests PASS. `python tools/check_docs.py` PASS: 14 requirements, 35
+  unique routes, 36 scenarios. `git diff --check` PASS. No frontend behavior
+  changed; frontend regression suite was NOT_RUN.
+- Changed task, README, plan and scenario status to reflect the exact limitation.
+  No product decision changed; DEC-06/07/08/10 remain APPROVED and DEC-09 remains
+  PENDING.
+- Current task: QM-009 BLOCKED on a running Docker Desktop Linux Engine. Next
+  actions: (1) start the engine; (2) rerun the Maven verify command above and fix
+  any integration failures; (3) record TC-008 evidence, close QM-009, and proceed
+  to the next READY task. Resume with `git status --short --branch` then the Maven
+  command above.
