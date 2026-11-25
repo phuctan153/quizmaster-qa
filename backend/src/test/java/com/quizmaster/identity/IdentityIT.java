@@ -73,7 +73,7 @@ class IdentityIT {
     @BeforeEach
     void fixtures() {
         // This connection belongs exclusively to the disposable Testcontainers DB.
-        jdbc.execute("TRUNCATE TABLE exam_option_snapshot, exam_question_snapshot, exam_draft_question, exam_version, question_option, question, account");
+        jdbc.execute("TRUNCATE TABLE exam_assignment, exam_option_snapshot, exam_question_snapshot, exam_draft_question, exam_version, question_option, question, account");
         password = UUID.randomUUID().toString();
         admin = seed("admin@example.test", Role.ADMIN, true);
         student = seed("student@example.test", Role.STUDENT, true);
@@ -729,6 +729,73 @@ class IdentityIT {
         assertThat(sourceAfter.get("state").asText()).isEqualTo("PUBLISHED");
         assertThat(sourceAfter.get("revision").asInt()).isEqualTo(1);
         assertThat(sourceAfter.get("questions").get(0).get("prompt").asText()).isEqualTo("Original published question");
+    }
+
+    @Test
+    void assignmentIsIdempotentScopedAndListsOnlyAuthorizedRecords() throws Exception {
+        var adminToken = token(admin);
+        var instructor = seed("assignment-owner@example.test", Role.INSTRUCTOR, true);
+        var instructorToken = token(instructor);
+        var otherInstructor = seed("assignment-other@example.test", Role.INSTRUCTOR, true);
+        var secondStudent = seed("assignment-second@example.test", Role.STUDENT, true);
+        var inactiveStudent = seed("assignment-inactive@example.test", Role.STUDENT, false);
+        var subjectId = createSubject(adminToken);
+        var questionId = createQuestion(instructorToken, subjectId, "Assigned exam question");
+        var draft = request(HttpMethod.POST, "/exams", instructorToken, examBody(List.of(questionId), "Assigned exam"));
+        var draftId = draft.getBody().get("id").asText();
+        var path = "/exams/" + draftId + "/assignments/" + student.id();
+        assertThat(request(HttpMethod.PUT, path, instructorToken, null).getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.GET, "/students?page=0&size=100", instructorToken, null).getBody().get("items").toString())
+                .contains("student@example.test", "assignment-second@example.test").doesNotContain("assignment-inactive@example.test");
+
+        assertThat(request(HttpMethod.POST, "/exams/" + draftId + "/publish", instructorToken, Map.of("revision", 0))
+                .getStatusCode().value()).isEqualTo(200);
+        var gate = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var jobs = java.util.stream.IntStream.range(0, 2).mapToObj(i -> pool.submit(() -> {
+                if (!gate.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Barrier timed out");
+                return request(HttpMethod.PUT, path, instructorToken, null);
+            })).toList();
+            gate.countDown();
+            var responses = List.of(jobs.get(0).get(15, TimeUnit.SECONDS), jobs.get(1).get(15, TimeUnit.SECONDS));
+            assertThat(responses.stream().map(response -> response.getStatusCode().value()).toList()).containsExactlyInAnyOrder(200, 201);
+            assertThat(responses.get(0).getBody().get("id").asText()).isEqualTo(responses.get(1).getBody().get("id").asText());
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                Integer.class, UUID.fromString(draftId), student.id())).isEqualTo(1);
+        assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + inactiveStudent.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + admin.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(409);
+        assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + UUID.randomUUID(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(404);
+        assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + student.id(), token(otherInstructor), null)
+                .getStatusCode().value()).isEqualTo(404);
+
+        var roster = request(HttpMethod.GET, "/exams/" + draftId + "/assignments?page=0&size=1", instructorToken, null);
+        assertThat(roster.getStatusCode().value()).isEqualTo(200);
+        assertThat(roster.getBody().get("items")).hasSize(1);
+        assertThat(roster.getBody().get("total").asInt()).isEqualTo(1);
+        var ownAssignments = request(HttpMethod.GET, "/assignments", token(student), null);
+        assertThat(ownAssignments.getStatusCode().value()).isEqualTo(200);
+        assertThat(ownAssignments.getBody().get("items").get(0).get("title").asText()).isEqualTo("Assigned exam");
+        var otherAssignments = request(HttpMethod.GET, "/assignments", token(secondStudent), null);
+        assertThat(otherAssignments.getBody().get("items")).isEmpty();
+        assertThat(otherAssignments.getBody().get("total").asInt()).isZero();
+        assertThat(request(HttpMethod.PATCH, "/users/" + student.id() + "/status", adminToken, Map.of("active", false))
+                .getStatusCode().value()).isEqualTo(200);
+        var repeatedAfterDeactivation = request(HttpMethod.PUT, path, instructorToken, null);
+        assertThat(repeatedAfterDeactivation.getStatusCode().value()).isEqualTo(200);
+        assertThat(repeatedAfterDeactivation.getBody().get("id").asText())
+                .isEqualTo(jdbc.queryForObject("SELECT id FROM exam_assignment WHERE exam_version_id=? AND student_id=?",
+                        UUID.class, UUID.fromString(draftId), student.id()).toString());
+        assertThat(request(HttpMethod.GET, "/exams/" + draftId + "/assignments", token(secondStudent), null).getStatusCode().value()).isEqualTo(403);
+        assertThat(request(HttpMethod.GET, "/assignments", instructorToken, null).getStatusCode().value()).isEqualTo(403);
+        assertThat(request(HttpMethod.GET, "/students", token(secondStudent), null).getStatusCode().value()).isEqualTo(403);
+
+        assertThat(request(HttpMethod.POST, "/exams/" + draftId + "/close", instructorToken, null).getStatusCode().value()).isEqualTo(200);
+        assertThat(request(HttpMethod.PUT, "/exams/" + draftId + "/assignments/" + secondStudent.id(), instructorToken, null)
+                .getStatusCode().value()).isEqualTo(409);
     }
 
     private String createSubject(String adminToken) {

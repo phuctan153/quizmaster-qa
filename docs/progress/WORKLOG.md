@@ -328,3 +328,11 @@
 - QM-014 DONE; TC-017 coverage added. QM-015 (exam assignments) IN_PROGRESS. DEC-09 remains PENDING; no approved product decisions changed.
 - Files: exam controller/repository/service, `IdentityIT`, API contract, scenarios, plan, README and task board. Commit follows self-review.
 - Next: implement QM-015 persistence and three assignment routes; verify idempotent assignment, owner/role/status boundaries, pagination and student isolation. Reproduce backend with the Maven command above; Docker/Testcontainers requires elevated command permission in this environment.
+
+### 2026-11-25 — QM-015 — exam assignments verified; QM-016 started
+- Added Flyway V5 `exam_assignment` with unique exam-version/student membership. Implemented active student lookup, instructor assignment, owner-scoped roster, and Student-only own-assignment listing. Student summaries omit inactive accounts and unrelated account fields.
+- Assignment creation locks the published exam version before checking/inserting, so concurrent duplicate requests serialize and return one stable assignment (201 for first creation, 200 for retry). Closed/draft versions, foreign exams, missing/inactive/non-student recipients and role violations are covered.
+- Verification: `mvn -f backend/pom.xml "-Djavax.net.ssl.trustStoreType=Windows-ROOT" "-Djavax.net.ssl.trustStore=NONE" -B verify` → BUILD SUCCESS on 2026-11-25 13:18 Bangkok; 6 unit + 36 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips; PostgreSQL 18.7, Flyway V1–V5. `python tools/check_docs.py` and `git diff --check` PASS after doc updates.
+- TC-017 PASS; QM-015 DONE. QM-016 atomic attempt start IN_PROGRESS. DEC-09 remains PENDING; no approved product decisions changed.
+- Files: assignment package, `SecurityConfig`, V5 migration, `IdentityIT`, API contract, architecture, scenarios, plan, README and task board. Commit follows self-review.
+- Next: implement attempt start with server-controlled timestamp and snapshot display order, enforcing DEC-06/07 quota and ACCESS_AND_STATES lock order; test starts against PostgreSQL including concurrent requests and exam close. Reproduce with the Maven command above; Testcontainers needs Docker access.

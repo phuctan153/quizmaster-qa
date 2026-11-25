@@ -98,4 +98,12 @@ Use this file only for multi-step or cross-module work. Codex can create, revise
 - Dependencies / approved decisions: QM-014; existing ACCESS_AND_STATES and API contract. Assignment is unique by exam version/student.
 - Verification: PostgreSQL/HTTP role, owner, student-status, draft/closed state, idempotency, list filtering/pagination and no cross-student leakage.
 - Risk / rollback: additive migration with a composite unique constraint; no destructive changes.
+- Status: COMPLETE on 2026-11-25; 6 unit + 36 HTTP/PostgreSQL integration tests PASS, including concurrent idempotency, recipient validation, pagination and student isolation.
+
+### PLAN-010 — Atomic attempt start
+- Goal: implement FR-009 attempt creation and active-attempt resume.
+- Scope: assigned Student starts only an eligible published exam; enforce configured quota and one active attempt; serialize using version→assignment lock order and recheck closed state.
+- Dependencies / approved decisions: QM-015, DEC-06/07, ACCESS_AND_STATES start invariants.
+- Verification: real PostgreSQL/HTTP tests for assigned access, limits, idempotency, expired/submitted predecessors and close/start concurrency.
+- Risk / rollback: additive migration; transaction locks and uniqueness constraints provide defense in depth.
 - Status: IN_PROGRESS on 2026-11-25.

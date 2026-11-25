@@ -1,6 +1,6 @@
 # REST API Contract — v1
 
-Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, exam draft/publish/close and successor version routes are implemented. Exam assignments are in progress; remaining paths are not implemented. Base path `/api/v1`.
+Status: design baseline; auth/account, taxonomy, instructor question CRUD/import, exam lifecycle and assignment routes are implemented. Attempt start is in progress; remaining paths are not implemented. Base path `/api/v1`.
 FR references resolve to SRS; access rules resolve to ACCESS_AND_STATES.
 UUID path IDs, UTC timestamps, JSON requests/responses unless stated otherwise.
 All endpoints require bearer JWT except login. No implicit role hierarchy.
@@ -42,7 +42,7 @@ also requires the ownership check defined in the access model.
 | POST | /users | A | CreateUser → Account (201) | FR-002; duplicate 409 |
 | GET | /users | A | page,size → Page<Account> | FR-002 |
 | PATCH | /users/{id}/status | A | AccountStatus → Account | FR-002 |
-| GET | /students | I | page,size → Page<StudentSummary> | FR-008; active students only |
+| GET | /students | I | page,size → Page<StudentSummary> | FR-008; active students only; implemented |
 | GET | /categories | A,I | page,size → Page<Category> | FR-003; implemented |
 | POST | /categories | A | Name → Category (201) | FR-003; duplicate 409 DUPLICATE_NAME; implemented |
 | GET | /subjects | A,I | page,size,categoryId? → Page<Subject> | FR-003; implemented |
@@ -59,9 +59,9 @@ also requires the ownership check defined in the access model.
 | POST | /exams/{id}/publish | I | Revision → Exam | FR-006; state/validation 409/400; immutable snapshots; implemented |
 | POST | /exams/{id}/close | I | — → Exam | FR-007; draft 409; repeated close stable; implemented |
 | POST | /exams/{id}/versions | I | — → Exam (201) | FR-007; published/closed source only; implemented |
-| PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409; QM-015 in progress |
-| GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008; QM-015 in progress |
-| GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only; QM-015 in progress |
+| PUT | /exams/{id}/assignments/{studentId} | I | — → Assignment (201 new / 200 existing) | FR-008; state/inactive 409; implemented |
+| GET | /exams/{id}/assignments | I | page,size → Page<Assignment> | FR-008; owner only; implemented |
+| GET | /assignments | S | page,size → Page<AssignedExam> | FR-008/009; own only; implemented |
 | POST | /exams/{id}/attempts | S | — → Attempt (201 new / 200 active) | FR-009; quota/state 409; unassigned 404 |
 | GET | /attempts/{id} | S | — → Attempt | FR-010, FR-011; reconcile expiry |
 | PUT | /attempts/{id}/answers/{questionId} | S | SaveAnswer → SavedAnswer | FR-010; expiry/revision/state 409 |

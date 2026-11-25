@@ -1,7 +1,7 @@
 # Initial Risk-Based Scenario Catalogue
 
 TC-001..007 and TC-035 are **PASS** on 2026-11-20; see execution mapping below.
-TC-008..016 are **PASS** on 2026-11-25. TC-017..034 and TC-036 are **NOT_RUN**. These are independent
+TC-008..017 are **PASS** on 2026-11-25. TC-018..034 and TC-036 are **NOT_RUN**. These are independent
 expected results derived from SRS. Risk P0 precedes P1.
 
 | TC | Priority | FR | Rule / decision | Scenario → expected outcome | Layer |
@@ -22,7 +22,7 @@ expected results derived from SRS. Risk P0 precedes P1.
 | TC-014 | P0 | FR-006 | RULE-EXAM-002 | Publish empty/invalid/stale draft → rejected, remains DRAFT, no snapshot | API/DB |
 | TC-015 | P0 | FR-007 | RULE-EXAM-004 | Edit bank/create new version after publish → old snapshot/settings unchanged | Integration/DB |
 | TC-016 | P0 | FR-007 | RULE-EXAM-001 | CLOSED→publish and PUBLISHED→edit → 409; repeat close is stable | API/state |
-| TC-017 | P0 | FR-008 | RULE-ATT-001 | Assign draft/closed/foreign exam or non-student → denied; duplicate assignment returns same row | API/DB |
+| TC-017 | P0 | FR-008 | RULE-ATT-001 | Assign draft/closed/foreign exam or inactive/non-student recipient → denied; concurrent duplicate returns same row; roster and student lists remain scoped | API/DB |
 | TC-018 | P0 | FR-009 | RULE-ATT-002; DEC-07 | Start quota 1 and 3 with expired/submitted predecessors → never exceed limit | API/DB |
 | TC-019 | P0 | FR-009 | RULE-ATT-003/004 | Barrier-start concurrent requests → one active attempt, contiguous committed numbers, stable counter | Concurrency/DB |
 | TC-020 | P0 | FR-009 | RULE-EXAM-001 | Race start against close → serialized allowed start or rejected start, no post-close allocation | Concurrency |
@@ -129,6 +129,14 @@ verifies draft-source rejection, snapshot/settings copy, source bank edit
 isolation, source immutability, owner/role boundaries, and two concurrent creates
 assigned distinct next version numbers (3 and 4). Same final Maven run: 6 unit +
 35 HTTP/PostgreSQL integration tests PASS; Flyway V1–V4 on PostgreSQL 18.7.
+
+TC-017 PASS (QM-015): `IdentityIT.assignmentIsIdempotentScopedAndListsOnlyAuthorizedRecords`
+verifies draft/closed assignment rejection, owner and role boundaries, inactive and
+non-student recipients, missing recipients, atomic concurrent duplicate requests
+(one 201 and one 200 for the same row), unique persistence, active-student filtering,
+pagination and no cross-student list leakage. Maven `verify` on 2026-11-25: 6 unit +
+36 HTTP/PostgreSQL integration tests PASS, zero failures/errors/skips; Flyway V1–V5
+on disposable PostgreSQL 18.7.
 
 ## Execution strategy
 

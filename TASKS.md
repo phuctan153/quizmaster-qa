@@ -9,10 +9,10 @@
 ## Current status
 
 - Phase: **03 — First backend slice (design baseline completed)**
-- Current task: **QM-015 (IN_PROGRESS)** — exam assignment API
-- Last verified task: **QM-014**
+- Current task: **QM-016 (IN_PROGRESS)** — atomic attempt start
+- Last verified task: **QM-015**
 - Approved product decisions: **DEC-01..DEC-08, DEC-10**
-- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, exam draft/publish snapshots, close and successor versions verified; assignment API is in progress; attempts/results and CI pending**
+- Implementation status: **Auth/account API, React UI, taxonomy, question CRUD, atomic CSV import, exam lifecycle and assignments verified; attempt start is in progress; answer/submission/results and CI pending**
 
 | ID | Task | Priority | Status | Dependencies | Acceptance / evidence |
 |---|---|---|---|---|---|
@@ -30,8 +30,9 @@
 | QM-012 | Exam draft and publish lifecycle | P1 | DONE | QM-010, QM-011 | Instructor-owned draft CRUD, strict settings/ownership/revision checks, atomic immutable question+option snapshots; 6 unit + 33 HTTP/PostgreSQL tests PASS; TC-013..015 PASS; see worklog |
 | QM-013 | Close published exams | P1 | DONE | QM-012 | Owner-only close; draft rejected; repeat/concurrent close stable with one revision increment; role/foreign denials; 6 unit + 34 HTTP/PostgreSQL tests PASS; TC-016 PASS |
 | QM-014 | Successor exam versions | P1 | DONE | QM-012, QM-013 | Published/closed source copies to editable draft with immutable snapshot/settings; owner denial; source bank edits isolated; concurrent version numbers unique; 6 unit + 35 HTTP/PostgreSQL tests PASS |
-| QM-015 | Exam assignment API | P1 | IN_PROGRESS | QM-014 | Instructor assigns owned published exam to active student; duplicate assignment idempotent; instructor roster and student own-assignment listing; PostgreSQL/RBAC evidence |
-| QM-016+ | Exam attempts, scoring/results, notifications and CI | P1 | BACKLOG | QM-015 | Split remaining functional and delivery slices into concrete tasks |
+| QM-015 | Exam assignment API | P1 | DONE | QM-014 | V5 assignment table and four list/create routes; unique/idempotent assignment, active-student validation, owner/RBAC filters; 6 unit + 36 HTTP/PostgreSQL tests PASS; TC-017 PASS |
+| QM-016 | Atomic attempt start | P1 | IN_PROGRESS | QM-015 | Student starts assigned published exam within configured quota; lock version then assignment; serialize with close; unique active attempt and contiguous numbering; PostgreSQL concurrency evidence |
+| QM-017+ | Answers, finalization/scoring, results, notifications and CI | P1 | BACKLOG | QM-016 | Split into requirement-first executable slices |
 
 ### QM-008 — Verified first UI slice
 - Priority: P1; dependencies: QM-007.
@@ -103,13 +104,23 @@
 - Next: QM-015 instructor assignment and roster/list API.
 
 ### QM-015 — Exam assignment API
-- Status: IN_PROGRESS
+- Status: DONE
 - Priority: P1; dependencies: QM-014; FR-008.
 - Goal: assign an owned published exam version to an active Student and expose scoped assignment lists.
 - Acceptance criteria: unique assignment per exam version/student; repeat assignment returns the existing record; Instructor roster is owner-scoped; Student list contains only the caller's assignments; reject inactive/non-Student accounts and non-published exams; enforce role/ownership and pagination.
 - Verification: real PostgreSQL/HTTP tests for idempotency, list filtering, role/owner boundaries, inactive accounts and invalid exam states; docs checker and diff review.
-- Evidence: API contract routes `PUT /exams/{id}/assignments/{studentId}`, `GET /exams/{id}/assignments`, and `GET /assignments`; execution pending.
-- Next: add assignment persistence and endpoints, then exercise RBAC, idempotency and leakage boundaries.
+- Evidence: Flyway V5; `AssignmentController`, `AssignmentService`, `AssignmentRepository`; `IdentityIT.assignmentIsIdempotentScopedAndListsOnlyAuthorizedRecords`; TC-017 PASS; 6 unit + 36 HTTP/PostgreSQL tests PASS.
+- Verification: Maven `verify` BUILD SUCCESS on PostgreSQL 18.7, zero failures/errors/skips. `python tools/check_docs.py` and `git diff --check` PASS.
+- Next: QM-016 atomic attempt start.
+
+### QM-016 — Atomic attempt start
+- Status: IN_PROGRESS
+- Priority: P1; dependencies: QM-015; FR-009, TC-018..020.
+- Goal: let a Student begin an assigned, eligible published exam while enforcing attempt limits and one active attempt per assignment.
+- Acceptance criteria: assigned active Student only; reject closed/unassigned/exhausted states; allocate attempt numbers without gaps on failed starts; return existing active attempt idempotently; serialize competing starts and close/start races using the documented version→assignment lock order.
+- Verification: real PostgreSQL/HTTP tests for limits 1 and 3, repeated active start, submitted/expired predecessors, barriers and close/start race; docs checker and diff review.
+- Evidence: API contract defines `POST /exams/{id}/attempts`; implementation pending.
+- Next: inspect existing attempt schema and approved DEC-06/07, then implement persistence and start route.
 
 ## Codex task creation rules
 

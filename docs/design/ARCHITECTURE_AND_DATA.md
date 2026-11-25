@@ -55,6 +55,10 @@ applies at publish. Bank QUESTION_OPTION rows are separate from EXAM_OPTION rows
 | outbox_event | UUID PK; event_key UNIQUE; recipient FK; event type/payload; delivery state/retries; next retry. Commit with result; worker retries delivery. |
 | notification | UUID PK; recipient FK; outbox event key UNIQUE; type/resource pointer; created_at/read_at. No answer keys. |
 
+Implemented schema note: Flyway V5 creates `exam_assignment` with a unique
+`(exam_version_id, student_id)` key and a student/date index. Its row is reserved
+for attempt allocation; QM-016 adds the transactional locking behavior.
+
 Foreign keys restrict deletion of referenced records. V1 uses account activation,
 exam close and bank retention rather than cascading deletion of attempt history.
 Role membership and cross-table snapshot membership are service invariants tested
